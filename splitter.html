@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Image Splitter | J-Tools</title>
-    <!-- Verified live working paths for Fabric.js and JSZip libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- ONLY JSZip is needed now. Fabric.js has been completely removed. -->
+    <script src="https://cloudflare.com"></script>
     <style>
         :root {
             --bg-color: #121214;
@@ -15,6 +14,7 @@
             --accent-color: #0071e3;
             --accent-hover: #0077ed;
             --success-color: #34c759;
+            --danger-color: #ff3b30;
             --border-color: #2a2a30;
         }
         body {
@@ -28,7 +28,7 @@
             align-items: center;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1100px;
             width: 100%;
             background: var(--card-bg);
             padding: 30px;
@@ -83,18 +83,22 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 450px;
+            min-height: 500px;
+            cursor: grab;
         }
+        .canvas-area:active { cursor: grabbing; }
+        
         .canvas-hint {
             position: absolute;
             bottom: 10px;
             left: 10px;
-            background: rgba(0,0,0,0.7);
-            padding: 5px 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 6px 12px;
             border-radius: 4px;
             font-size: 0.75rem;
-            color: #86868b;
+            color: #aeaeae;
             pointer-events: none;
+            line-height: 1.4;
         }
 
         button {
@@ -110,7 +114,7 @@
         button:hover { background: var(--accent-hover); }
         button:disabled { background: #333; color: #666; cursor: not-allowed; }
         
-        /* Preview Grid Section */
+        /* Interactive Map Preview Section */
         .preview-section {
             margin-top: 40px;
             border-top: 1px solid var(--border-color);
@@ -121,59 +125,43 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-        }
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            margin-bottom: 15px;
+            flex-wrap: wrap;
             gap: 15px;
         }
-        .tile-card {
-            background: #2a2a30;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid transparent;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.2s ease;
-        }
-        .tile-card img {
-            width: 100%;
-            display: block;
-            height: auto;
-            background: #111;
-        }
-        .tile-card.selected {
-            border-color: var(--success-color);
-            box-shadow: 0 0 10px rgba(52, 199, 89, 0.3);
-        }
-        .checkbox-indicator {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: rgba(0,0,0,0.6);
-            border: 2px solid white;
+        .bulk-actions {
             display: flex;
-            align-items: center;
+            gap: 10px;
+        }
+        .btn-small {
+            background: #2a2a30;
+            border: 1px solid #3a3a40;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+        .btn-small:hover { background: #3a3a40; }
+        
+        .map-container {
+            display: flex;
             justify-content: center;
+            background: #09090b;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 25px;
         }
-        .tile-card.selected .checkbox-indicator {
-            background: var(--success-color);
-            border-color: var(--success-color);
-        }
-        .tile-card.selected .checkbox-indicator::after {
-            content: '✓';
-            color: white;
-            font-size: 11px;
-            font-weight: bold;
+        #selectionCanvas {
+            max-width: 100%;
+            height: auto;
+            cursor: pointer;
         }
         .download-bar {
-            margin-top: 25px;
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
+            background: #1e1e24;
+            padding: 15px 20px;
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -184,50 +172,57 @@
         <h1>✂️ Advanced Image Splitter</h1>
         
         <div class="workspace">
-            <!-- Sidebar Controls -->
             <div class="panel-controls">
                 <div class="control-group">
                     <label for="imageInput">Upload Source Image</label>
                     <input type="file" id="imageInput" accept="image/*">
                 </div>
-
                 <div class="control-group">
                     <label for="rowsInput">Rows (Horizontal Splits)</label>
                     <input type="number" id="rowsInput" value="3" min="1" max="20" disabled>
                 </div>
-
                 <div class="control-group">
                     <label for="colsInput">Columns (Vertical Splits)</label>
                     <input type="number" id="colsInput" value="3" min="1" max="20" disabled>
                 </div>
-
                 <button id="previewSplitBtn" disabled>Preview Split Sections</button>
             </div>
 
-            <!-- Canvas Viewport -->
             <div class="canvas-area" id="canvasContainer">
                 <canvas id="mainCanvas"></canvas>
                 <div class="canvas-hint" id="canvasHint" style="display:none;">
-                    Scroll to Zoom | Hold Alt + Drag to Pan | Drag Lines to Customize
+                    • Left-Click & Drag to Pan image<br>
+                    • Use Scroll Wheel to Zoom in/out<br>
+                    • Hover & Drag gridlines to adjust cuts manually
                 </div>
             </div>
         </div>
 
-        <!-- Dynamic Output Matrix Section -->
+        <!-- Interactive Map Bounding Box Overlay -->
         <div class="preview-section" id="previewSection">
             <div class="preview-header">
-                <h2>Select Tiles to Keep</h2>
-                <span id="selectionCount" style="color:#86868b;">0 tiles selected</span>
+                <div>
+                    <h2>Select Sections to Keep</h2>
+                    <p style="margin: 5px 0 0 0; color:#86868b; font-size:0.9rem;">Click individual grid quadrants to toggle them on or off.</p>
+                </div>
+                <div class="bulk-actions">
+                    <button class="btn-small" id="selectAllBtn">Select All</button>
+                    <button class="btn-small" id="deselectAllBtn">Clear All</button>
+                </div>
             </div>
-            <div class="gallery-grid" id="galleryGrid"></div>
+            
+            <div class="map-container">
+                <canvas id="selectionCanvas"></canvas>
+            </div>
+            
             <div class="download-bar">
+                <span id="selectionCount" style="font-weight: 500;">0 tiles selected</span>
                 <button id="downloadBtn" style="background-color: var(--success-color);">Download Selected Pack (.ZIP)</button>
             </div>
         </div>
     </div>
-
     <script>
-        // DOM Elements
+        // UI Bindings
         const imageInput = document.getElementById('imageInput');
         const rowsInput = document.getElementById('rowsInput');
         const colsInput = document.getElementById('colsInput');
@@ -235,314 +230,410 @@
         const canvasContainer = document.getElementById('canvasContainer');
         const canvasHint = document.getElementById('canvasHint');
         const previewSection = document.getElementById('previewSection');
-        const galleryGrid = document.getElementById('galleryGrid');
+        const selectionCanvas = document.getElementById('selectionCanvas');
         const selectionCountText = document.getElementById('selectionCount');
         const downloadBtn = document.getElementById('downloadBtn');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const deselectAllBtn = document.getElementById('deselectAllBtn');
 
-        // Global Application Context
-        let canvas = null;
-        let fabricImgInstance = null;
-        let horizontalLines = [];
-        let verticalLines = [];
-        let generatedTilesData = [];
+        // Core App Context Variables
+        const mainCanvas = document.getElementById('mainCanvas');
+        const ctx = mainCanvas.getContext('2d');
+        const selCtx = selectionCanvas.getContext('2d');
 
-        // Initialize Fabric.js Canvas Environment
-        function initCanvas() {
-            canvas = new fabric.Canvas('mainCanvas', {
-                width: canvasContainer.clientWidth - 4,
-                height: 450,
-                selection: false,
-                backgroundColor: '#09090b'
-            });
-            setupZoomAndPan();
+        let imgElement = null; // Holds uploaded native image element
+        let isImageLoaded = false;
+
+        // Viewport Settings (Zoom & Pan)
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDraggingViewport = false;
+        let startX, startY;
+
+        // Split Metrics (Stored in clean, relative 0-to-1 ratios relative to original image size)
+        let rowCuts = []; // Positions of horizontal split lines (values between 0 and 1)
+        let colCuts = []; // Positions of vertical split lines (values between 0 and 1)
+
+        // Line-Dragging Tracker States
+        let activeLineIndex = null;
+        let activeLineType = null; // 'row' or 'col'
+        let isDraggingLine = false;
+        const clickTolerance = 12; // Pixel cushion around mouse to make selecting lines easy
+
+        // Grid Matrix Data Mappings for keeping track of selected pieces
+        let tileMatrix = []; // Array of objects matching layout dimensions
+
+        // Set explicit drawing viewport on launch
+        function resizeMainCanvas() {
+            mainCanvas.width = canvasContainer.clientWidth;
+            mainCanvas.height = 500;
+            drawWorkspace();
+        }
+        window.addEventListener('resize', resizeMainCanvas);
+        mainCanvas.width = 400; // placeholder sizing initialization
+        mainCanvas.height = 500;
+
+        // --- CORE MATH UTILITIES ---
+        // Converts coordinates from actual image pixel spots down into viewport screen pixels
+        function imageToScreen(imgX, imgY) {
+            if (!isImageLoaded) return { x: 0, y: 0 };
+            // Center the image relative base layer coordinates inside view screen first
+            const baseLeft = (mainCanvas.width - imgElement.width * zoom) / 2;
+            const baseTop = (mainCanvas.height - imgElement.height * zoom) / 2;
+            return {
+                x: baseLeft + imgX * zoom + panX,
+                y: baseTop + imgY * zoom + panY
+            };
         }
 
-        // Feature 1: Zooming and Panning Engine
-        function setupZoomAndPan() {
-            canvas.on('mouse:wheel', function(opt) {
-                if (!fabricImgInstance) return;
-                var delta = opt.e.deltaY;
-                var zoom = canvas.getZoom();
-                zoom *= 0.999 ** delta;
-                if (zoom > 20) zoom = 20;
-                if (zoom < 0.05) zoom = 0.05;
-                canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-                opt.e.preventDefault();
-                opt.e.stopPropagation();
-            });
-
-            canvas.on('mouse:down', function(opt) {
-                var evt = opt.e;
-                if (evt.altKey === true || !opt.target) {
-                    this.isDragging = true;
-                    this.selection = false;
-                    this.lastPosX = evt.clientX;
-                    this.lastPosY = evt.clientY;
-                }
-            });
-
-            canvas.on('mouse:move', function(opt) {
-                if (this.isDragging) {
-                    var e = opt.e;
-                    var vpt = this.viewportTransform;
-                    vpt[4] += e.clientX - this.lastPosX;
-                    vpt[5] += e.clientY - this.lastPosY;
-                    this.requestRenderAll();
-                    this.lastPosX = e.clientX;
-                    this.lastPosY = e.clientY;
-                }
-            });
-
-            canvas.on('mouse:up', function(opt) {
-                this.setViewportTransform(this.viewportTransform);
-                this.isDragging = false;
-                this.selection = true;
-            });
+        // Reverse map screen mouse coordinate offsets back into pure original raw image pixel indexes
+        function screenToImage(screenX, screenY) {
+            if (!isImageLoaded) return { x: 0, y: 0 };
+            const baseLeft = (mainCanvas.width - imgElement.width * zoom) / 2;
+            const baseTop = (mainCanvas.height - imgElement.height * zoom) / 2;
+            return {
+                x: (screenX - baseLeft - panX) / zoom,
+                y: (screenY - baseTop - panY) / zoom
+            };
         }
 
-        // Extract input files and draw base layer using updated Fabric.js architecture
+        // --- SYSTEM IMAGE INPUT LAYER ---
         imageInput.addEventListener('change', function(e) {
             const files = e.target.files;
             if (!files || files.length === 0) return;
 
             const reader = new FileReader();
             reader.onload = function(f) {
-                const imgElement = new Image();
+                imgElement = new Image();
                 imgElement.src = f.target.result;
                 imgElement.onload = function() {
-                    // Reset interface
-                    canvas.clear();
-                    canvas.setZoom(1);
-                    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+                    isImageLoaded = true;
+                    previewSection.style.display = 'none'; // Hide dynamic sections from past uploads
 
-                    fabricImgInstance = new fabric.Image(imgElement);
-                    fabricImgInstance.set({ selectable: false, hoverCursor: 'default' });
+                    // Auto-Scale viewport transform smoothly so image perfectly fits screen instantly
+                    const scaleW = (mainCanvas.width - 60) / imgElement.width;
+                    const scaleH = (mainCanvas.height - 60) / imgElement.height;
+                    zoom = Math.min(scaleW, scaleH, 1);
+                    
+                    panX = 0;
+                    panY = 0;
 
-                    // Fit image into bounding framework intelligently
-                    const scaleFactor = Math.min((canvas.width - 40) / fabricImgInstance.width, (canvas.height - 40) / fabricImgInstance.height, 1);
-                    fabricImgInstance.scale(scaleFactor);
-
-                    // Center asset alignment
-                    fabricImgInstance.left = (canvas.width - (fabricImgInstance.width * scaleFactor)) / 2;
-                    fabricImgInstance.top = (canvas.height - (fabricImgInstance.height * scaleFactor)) / 2;
-
-                    canvas.add(fabricImgInstance);
-
-                    // Activate configuration panel controls
+                    // Activate configuration variables
                     rowsInput.disabled = false;
                     colsInput.disabled = false;
                     previewSplitBtn.disabled = false;
                     canvasHint.style.display = 'block';
 
-                    generateSplitLines();
-                    canvas.renderAll();
+                    resetGridLinesProportionally();
+                    resizeMainCanvas();
                 };
             };
             reader.readAsDataURL(files[0]);
         });
 
-        // Feature 2 & 3: Generate Draggable Guidelines
-        function generateSplitLines() {
-            // Wipe clean any existing vectors
-            horizontalLines.forEach(l => canvas.remove(l));
-            verticalLines.forEach(l => canvas.remove(l));
-            horizontalLines = [];
-            verticalLines = [];
-
-            if (!fabricImgInstance) return;
-
+        function resetGridLinesProportionally() {
+            if (!isImageLoaded) return;
             const rCount = parseInt(rowsInput.value) || 1;
             const cCount = parseInt(colsInput.value) || 1;
 
-            const imgBounds = fabricImgInstance.getBoundingRect();
-
-            // Setup Horizontal Cut Guides
-            for (let i = 1; i < rCount; i++) {
-                const targetY = imgBounds.top + (imgBounds.height / rCount) * i;
-                const hLine = new fabric.Line([imgBounds.left, targetY, imgBounds.left + imgBounds.width, targetY], {
-                    stroke: '#0071e3',
-                    strokeWidth: 2,
-                    selectable: true,
-                    hasControls: false,
-                    hasBorders: false,
-                    lockMovementX: true, // Only drag up and down
-                    hoverCursor: 'ns-resize'
-                });
-
-                // Constraint: Prevent users from dragging lines completely out of image bounds
-                hLine.on('moving', function() {
-                    if (this.top < imgBounds.top) this.top = imgBounds.top;
-                    if (this.top > imgBounds.top + imgBounds.height) this.top = imgBounds.top + imgBounds.height;
-                    this.set({ x1: imgBounds.left, x2: imgBounds.left + imgBounds.width, y1: this.top, y2: this.top });
-                });
-
-                horizontalLines.push(hLine);
-                canvas.add(hLine);
+            rowCuts = [];
+            for(let i = 1; i < rCount; i++) {
+                rowCuts.push(i / rCount);
             }
 
-            // Setup Vertical Cut Guides
-            for (let j = 1; j < cCount; j++) {
-                const targetX = imgBounds.left + (imgBounds.width / cCount) * j;
-                const vLine = new fabric.Line([targetX, imgBounds.top, targetX, imgBounds.top + imgBounds.height], {
-                    stroke: '#0071e3',
-                    strokeWidth: 2,
-                    selectable: true,
-                    hasControls: false,
-                    hasBorders: false,
-                    lockMovementY: true, // Only drag left and right
-                    hoverCursor: 'ew-resize'
-                });
-
-                vLine.on('moving', function() {
-                    if (this.left < imgBounds.left) this.left = imgBounds.left;
-                    if (this.left > imgBounds.left + imgBounds.width) this.left = imgBounds.left + imgBounds.width;
-                    this.set({ y1: imgBounds.top, y2: imgBounds.top + imgBounds.height, left: this.left, x1: this.left, x2: this.left });
-                });
-
-                verticalLines.push(vLine);
-                canvas.add(vLine);
+            colCuts = [];
+            for(let j = 1; j < cCount; j++) {
+                colCuts.push(j / cCount);
             }
-            canvas.bringToFront(canvas.getObjects('line'));
+            drawWorkspace();
         }
 
-        // Bind update triggers to settings controls
-        rowsInput.addEventListener('input', generateSplitLines);
-        colsInput.addEventListener('input', generateSplitLines);
+        rowsInput.addEventListener('input', resetGridLinesProportionally);
+        colsInput.addEventListener('input', resetGridLinesProportionally);
 
-        // Feature 4: Generate Section Previews from Custom Coordinates
-        previewSplitBtn.addEventListener('click', function() {
-            if (!fabricImgInstance) return;
+        // --- WORKSPACE RENDERING PIPE ---
+        function drawWorkspace() {
+            ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            if (!isImageLoaded) return;
 
-            galleryGrid.innerHTML = '';
-            generatedTilesData = [];
+            // Draw Source Image
+            const imgTopLeft = imageToScreen(0, 0);
+            ctx.drawImage(imgElement, imgTopLeft.x, imgTopLeft.y, imgElement.width * zoom, imgElement.height * zoom);
 
-            const imgBounds = fabricImgInstance.getBoundingRect();
-            const originalWidth = fabricImgInstance.width;
-            const originalHeight = fabricImgInstance.height;
-            const currentScaleX = fabricImgInstance.scaleX;
-            const currentScaleY = fabricImgInstance.scaleY;
+            // Draw Active Cut Guidelines
+            ctx.lineWidth = 2;
 
-            // Map canvas line metrics back to the pixel arrays of the source image
-            let yCuts = horizontalLines.map(l => (l.top - imgBounds.top) / currentScaleY);
-            let xCuts = verticalLines.map(l => (l.left - imgBounds.left) / currentScaleX);
+            // Horizontal Rows
+            rowCuts.forEach((cutRatio) => {
+                const startPt = imageToScreen(0, cutRatio * imgElement.height);
+                const endPt = imageToScreen(imgElement.width, cutRatio * imgElement.height);
+                ctx.strokeStyle = '#ffcc00'; // Using High Visibility Yellow instead of generic blue
+                ctx.beginPath();
+                ctx.moveTo(startPt.x, startPt.y);
+                ctx.lineTo(endPt.x, endPt.y);
+                ctx.stroke();
+            });
 
-            // Sort custom positions numerically and pad edges
-            yCuts.sort((a, b) => a - b);
-            xCuts.sort((a, b) => a - b);
-            yCuts.unshift(0);
-            yCuts.push(originalHeight);
-            xCuts.unshift(0);
-            xCuts.push(originalWidth);
+            // Vertical Columns
+            colCuts.forEach((cutRatio) => {
+                const startPt = imageToScreen(cutRatio * imgElement.width, 0);
+                const endPt = imageToScreen(cutRatio * imgElement.width, imgElement.height);
+                ctx.strokeStyle = '#ffcc00';
+                ctx.beginPath();
+                ctx.moveTo(startPt.x, startPt.y);
+                ctx.lineTo(endPt.x, endPt.y);
+                ctx.stroke();
+            });
+        }
 
-            // Access underlying pixel array data inside native HTML canvas
-            const baseNativeImg = fabricImgInstance._element;
-            const scratchCanvas = document.createElement('canvas');
-            const scratchCtx = scratchCanvas.getContext('2d');
+        // --- NATIVE INTERACTION LISTENER LOGIC ---
+        // Mouse Wheel Handler for Zooming
+        mainCanvas.addEventListener('wheel', function(e) {
+            if (!isImageLoaded) return;
+            e.preventDefault();
 
-            let segmentIndex = 1;
+            const mousePos = { x: e.offsetX, y: e.offsetY };
+            const imgPosBeforeZoom = screenToImage(mousePos.x, mousePos.y);
 
-            // Slice out bounding configurations sequentially
-            for (let r = 0; r < yCuts.length - 1; r++) {
-                for (let c = 0; c < xCuts.length - 1; c++) {
-                    const sX = xCuts[c];
-                    const sY = yCuts[r];
-                    const sW = xCuts[c+1] - sX;
-                    const sH = yCuts[r+1] - sY;
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            zoom *= zoomFactor;
+            zoom = Math.max(0.05, Math.min(zoom, 30)); // Set elastic boundaries
 
-                    // Skip micro segments or anomalies
-                    if (sW <= 1 || sH <= 1) continue;
+            const imgPosAfterZoom = imageToScreen(imgPosBeforeZoom.x, imgPosBeforeZoom.y);
+            panX += mousePos.x - imgPosAfterZoom.x;
+            panY += mousePos.y - imgPosAfterZoom.y;
 
-                    scratchCanvas.width = sW;
-                    scratchCanvas.height = sH;
-                    scratchCtx.clearRect(0,0,sW,sH);
-                    scratchCtx.drawImage(baseNativeImg, sX, sY, sW, sH, 0, 0, sW, sH);
+            drawWorkspace();
+        });
 
-                    const dataUrl = scratchCanvas.toDataURL('image/png');
+        // Mouse Down Handler (Detect Line Click vs Panning Click)
+        mainCanvas.addEventListener('mousedown', function(e) {
+            if (!isImageLoaded) return;
+            const mouseX = e.offsetX;
+            const mouseY = e.offsetY;
 
-                    // Construct visual UI elements
-                    const card = document.createElement('div');
-                    card.className = 'tile-card selected'; // Default initialized to selected state
-                    card.dataset.index = segmentIndex;
+            activeLineIndex = null;
+            activeLineType = null;
 
-                    const img = document.createElement('img');
-                    img.src = dataUrl;
-
-                    const indicator = document.createElement('div');
-                    indicator.className = 'checkbox-indicator';
-
-                    card.appendChild(img);
-                    card.appendChild(indicator);
-                    galleryGrid.appendChild(card);
-
-                    // Retain data mappings
-                    generatedTilesData.push({
-                        id: segmentIndex,
-                        dataUrl: dataUrl,
-                        selected: true,
-                        filename: `tile_row${r+1}_col${c+1}.png`
-                    });
-
-                    // Event trigger for item selection toggle
-                    card.addEventListener('click', function() {
-                        const tileId = parseInt(this.dataset.index);
-                        const match = generatedTilesData.find(t => t.id === tileId);
-                        match.selected = !match.selected;
-                        
-                        if (match.selected) {
-                            this.classList.add('selected');
-                        } else {
-                            this.classList.remove('selected');
-                        }
-                        updateSelectionCounter();
-                    });
-
-                    segmentIndex++;
+            // Check if user clicked a horizontal split line
+            for (let i = 0; i < rowCuts.length; i++) {
+                const screenLineY = imageToScreen(0, rowCuts[i] * imgElement.height).y;
+                if (Math.abs(mouseY - screenLineY) < clickTolerance) {
+                    activeLineIndex = i;
+                    activeLineType = 'row';
+                    isDraggingLine = true;
+                    return;
                 }
             }
 
-            previewSection.style.display = 'block';
-            updateSelectionCounter();
-            
-            // Auto scroll down to preview section smooth view
-            previewSection.scrollIntoView({ behavior: 'smooth' });
-        });
-
-        function updateSelectionCounter() {
-            const totalSelected = generatedTilesData.filter(t => t.selected).length;
-            selectionCountText.innerText = `${totalSelected} of ${generatedTilesData.length} tiles selected`;
-            downloadBtn.disabled = totalSelected === 0;
-        }
-
-        // Smart zip pipeline execution
-        downloadBtn.addEventListener('click', async function() {
-            const activeTiles = generatedTilesData.filter(t => t.selected);
-            if (activeTiles.length === 0) return;
-
-            downloadBtn.innerText = "Bundling ZIP archive...";
-            downloadBtn.disabled = true;
-
-            const zip = new JSZip();
-
-            for (const tile of activeTiles) {
-                // Fetch binary payload format out of dynamic URL scheme data base64
-                const response = await fetch(tile.dataUrl);
-                const blob = await response.blob();
-                zip.file(tile.filename, blob);
+            // Check if user clicked a vertical split line
+            for (let j = 0; j < colCuts.length; j++) {
+                const screenLineX = imageToScreen(colCuts[j] * imgElement.width, 0).x;
+                if (Math.abs(mouseX - screenLineX) < clickTolerance) {
+                    activeLineIndex = j;
+                    activeLineType = 'col';
+                    isDraggingLine = true;
+                    return;
+                }
             }
 
-            zip.generateAsync({ type: 'blob' }).then(function(content) {
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = "jtools_split_manifest.zip";
-                link.click();
-                
-                downloadBtn.innerText = "Download Selected Pack (.ZIP)";
-                downloadBtn.disabled = false;
-            });
+            // If no lines were clicked, default to standard panning mode
+            isDraggingViewport = true;
+            startX = mouseX - panX;
+            startY = mouseY - panY;
         });
 
-        // Boot system framework on document ready
-        window.onload = initCanvas;
-    </script>
+        // Mouse Move Handler (Updates Panning or Line Sliding Positioning)
+        mainCanvas.addEventListener('mousemove', function(e) {
+            if (!isImageLoaded) return;
+            const mouseX = e.offsetX;
+            const mouseY = e.offsetY;
+
+            // 1. Process Active Line Drag Movement
+            if (isDraggingLine) {
+                const imgCoords = screenToImage(mouseX, mouseY);
+                
+                if (activeLineType === 'row') {
+                    let ratioY = imgCoords.y / imgElement.height;
+ratioY = Math.max(0.01, Math.min(ratioY, 0.99)); // Snap containment barrier
+rowCuts[activeLineIndex] = ratioY;
+} else if (activeLineType === 'col') {
+let ratioX = imgCoords.x / imgElement.width;
+ratioX = Math.max(0.01, Math.min(ratioX, 0.99));
+colCuts[activeLineIndex] = ratioX;
+}
+drawWorkspace();
+return;
+}
+// 2. Process Viewport Drag Panning Move
+if (isDraggingViewport) {
+panX = mouseX - startX;
+panY = mouseY - startY;
+drawWorkspace();
+return;
+}
+// 3. Dynamic Cursor Styling Hover Updates
+let hoverFound = false;
+for (let i = 0; i < rowCuts.length; i++) {
+const lineY = imageToScreen(0, rowCuts[i] * imgElement.height).y;
+if (Math.abs(mouseY - lineY) < clickTolerance) {
+canvasContainer.style.cursor = 'ns-resize';
+hoverFound = true;
+break;
+}
+}
+if (!hoverFound) {
+for (let j = 0; j < colCuts.length; j++) {
+const lineX = imageToScreen(colCuts[j] * imgElement.width, 0).x;
+if (Math.abs(mouseX - lineX) < clickTolerance) {
+canvasContainer.style.cursor = 'ew-resize';
+hoverFound = true;
+break;
+}
+}
+}
+if (!hoverFound) {
+canvasContainer.style.cursor = 'grab';
+}
+});
+// Terminate any active click gestures safely
+window.addEventListener('mouseup', function() {
+isDraggingViewport = false;
+isDraggingLine = false;
+});
+// --- INTERACTIVE PREVIEW MAP RENDERING SUITE ---
+previewSplitBtn.addEventListener('click', function() {
+if (!isImageLoaded) return;
+// 1. Format bounding coordinate slices chronologically
+let yCuts = [...rowCuts].sort((a,b) => a-b);
+let xCuts = [...colCuts].sort((a,b) => a-b);
+yCuts.unshift(0); yCuts.push(1);
+xCuts.unshift(0); xCuts.push(1);
+// 2. Build Selection Model Arrays
+tileMatrix = [];
+let indexId = 0;
+const rSegments = yCuts.length - 1;
+const cSegments = xCuts.length - 1;
+for (let r = 0; r < rSegments; r++) {
+for (let c = 0; c < cSegments; c++) {
+tileMatrix.push({
+id: indexId++,
+row: r,
+col: c,
+xStartRatio: xCuts[c],
+xEndRatio: xCuts[c+1],
+yStartRatio: yCuts[r],
+yEndRatio: yCuts[r+1],
+selected: true // Default all pieces to active
+});
+}
+}
+// 3. Set display container ratios on selector canvas map viewport
+const maxDisplaySize = 650;
+if (imgElement.width >= imgElement.height) {
+selectionCanvas.width = maxDisplaySize;
+selectionCanvas.height = (imgElement.height / imgElement.width) * maxDisplaySize;
+} else {
+selectionCanvas.height = maxDisplaySize;
+selectionCanvas.width = (imgElement.width / imgElement.height) * maxDisplaySize;
+}
+previewSection.style.display = 'block';
+drawSelectionMap();
+updateSelectionMetricsUI();
+previewSection.scrollIntoView({ behavior: 'smooth' });
+});
+function drawSelectionMap() {
+selCtx.clearRect(0,0, selectionCanvas.width, selectionCanvas.height);
+// Draw background mini map image
+selCtx.drawImage(imgElement, 0, 0, selectionCanvas.width, selectionCanvas.height);
+// Render section overlays over squares
+tileMatrix.forEach((tile) => {
+const x1 = tile.xStartRatio * selectionCanvas.width;
+const x2 = tile.xEndRatio * selectionCanvas.width;
+const y1 = tile.yStartRatio * selectionCanvas.height;
+const y2 = tile.yEndRatio * selectionCanvas.height;
+const w = x2 - x1;
+const h = y2 - y1;
+if (!tile.selected) {
+// Draw muted dark mask overlay on non-selected sectors
+selCtx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+selCtx.fillRect(x1, y1, w, h);
+// Overlay an 'X' indicator inside dropped zones
+selCtx.strokeStyle = 'rgba(255, 59, 48, 0.6)';
+selCtx.lineWidth = 2;
+selCtx.beginPath();
+selCtx.moveTo(x1 + 10, y1 + 10);
+selCtx.lineTo(x2 - 10, y2 - 10);
+selCtx.moveTo(x2 - 10, y1 + 10);
+selCtx.lineTo(x1 + 10, y2 - 10);
+selCtx.stroke();
+} else {
+// Light highlight around selected regions
+selCtx.strokeStyle = 'rgba(52, 199, 89, 0.8)';
+selCtx.lineWidth = 1.5;
+selCtx.strokeRect(x1 + 1, y1 + 1, w - 2, h - 2);
+}
+});
+}
+// Selection Grid Canvas Box Click Handler
+selectionCanvas.addEventListener('click', function(e) {
+// Translate tracking points safely relative to display scales
+const bounds = selectionCanvas.getBoundingClientRect();
+const clickXRatio = (e.clientX - bounds.left) / bounds.width;
+const clickYRatio = (e.clientY - bounds.top) / bounds.height;
+// Trace exactly which quadrant matching ratio bounds caught the event
+const clickedTile = tileMatrix.find(tile =>
+clickXRatio >= tile.xStartRatio && clickXRatio <= tile.xEndRatio &&
+clickYRatio >= tile.yStartRatio && clickYRatio <= tile.yEndRatio
+);
+if (clickedTile) {
+clickedTile.selected = !clickedTile.selected;
+drawSelectionMap();
+updateSelectionMetricsUI();
+}
+});
+// Quick Bulk Actions
+selectAllBtn.addEventListener('click', () => { tileMatrix.forEach(t => t.selected = true); drawSelectionMap(); updateSelectionMetricsUI(); });
+deselectAllBtn.addEventListener('click', () => { tileMatrix.forEach(t => t.selected = false); drawSelectionMap(); updateSelectionMetricsUI(); });
+function updateSelectionMetricsUI() {
+const totalActive = tileMatrix.filter(t => t.selected).length;
+selectionCountText.innerText = ${totalActive} of ${tileMatrix.length} sections marked for save;
+downloadBtn.disabled = totalActive === 0;
+}
+// --- SMART BACKGROUND COMPRESSION ZIP EXPORT ---
+downloadBtn.addEventListener('click', async function() {
+const saveTargets = tileMatrix.filter(t => t.selected);
+if (saveTargets.length === 0) return;
+downloadBtn.innerText = "Slicing & Zipping Archive...";
+downloadBtn.disabled = true;
+const zip = new JSZip();
+const exportCanvas = document.createElement('canvas');
+const exportCtx = exportCanvas.getContext('2d');
+for (const tile of saveTargets) {
+const sX = tile.xStartRatio * imgElement.width;
+const sY = tile.yStartRatio * imgElement.height;
+const sW = (tile.xEndRatio - tile.xStartRatio) * imgElement.width;
+const sH = (tile.yEndRatio - tile.yStartRatio) * imgElement.height;
+// Adjust sizing canvas viewport perfectly to capture snippet frame
+exportCanvas.width = sW;
+exportCanvas.height = sH;
+exportCtx.drawImage(imgElement, sX, sY, sW, sH, 0, 0, sW, sH);
+const dataUrl = exportCanvas.toDataURL('image/png');
+const base64Data = dataUrl.split(',')[1];
+zip.file(split_segment_r${tile.row + 1}_c${tile.col + 1}.png, base64Data, { base64: true });
+}
+zip.generateAsync({ type: 'blob' }).then(function(content) {
+const link = document.createElement('a');
+link.href = URL.createObjectURL(content);
+link.download = "jtools_custom_split.zip";
+link.click();
+downloadBtn.innerText = "Download Selected Pack (.ZIP)";
+downloadBtn.disabled = false;
+});
+});
+// Start engine frame layout mapping on boot load sequence completion
+window.onload = resizeMainCanvas;
+</script>
 </body>
 </html>
