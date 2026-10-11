@@ -225,7 +225,6 @@
             </div>
         </div>
     </div>
-
     <script>
         // DOM Elements
         const imageInput = document.getElementById('imageInput');
@@ -285,148 +284,180 @@
                 if (this.isDragging) {
                     var e = opt.e;
                     var vpt = this.viewportTransform;
-vpt[4] += e.clientX - this.lastPosX;
-vpt[5] += e.clientY - this.lastPosY;
-this.requestRenderAll();
-this.lastPosX = e.clientX;
-this.lastPosY = e.clientY;
-}
-});
-canvas.on('mouse:up', function(opt) {
-this.setViewportTransform(this.viewportTransform);
-this.isDragging = false;
-this.selection = true;
-});
-}
-// Extract input files and draw base layer
-imageInput.addEventListener('change', function(e) {
-const file = e.target.files[0];
-if (!file) return;
-const reader = new FileReader();
-reader.onload = function(f) {
-fabric.Image.fromURL(f.target.result, function(img) {
-// Reset interface
-canvas.clear();
-canvas.setZoom(1);
-canvas.viewportTransform =;
-fabricImgInstance = img;
-img.set({ selectable: false, hoverCursor: 'default' });
-// Fit image into bounding framework intelligently
-const scaleFactor = Math.min((canvas.width - 40) / img.width, (canvas.height - 40) / img.height, 1);
-img.scale(scaleFactor);
-// Center asset alignment
-img.left = (canvas.width - (img.width * scaleFactor)) / 2;
-img.top = (canvas.height - (img.height * scaleFactor)) / 2;
-canvas.add(img);
-// Activate configuration panel controls
-rowsInput.disabled = false;
-colsInput.disabled = false;
-previewSplitBtn.disabled = false;
-canvasHint.style.display = 'block';
-generateSplitLines();
-canvas.renderAll();
-});
-};
-reader.readAsDataURL(file);
-});
-// Feature 2 & 3: Generate Draggable Guidelines
-function generateSplitLines() {
-// Wipe clean any existing vectors
-horizontalLines.forEach(l => canvas.remove(l));
-verticalLines.forEach(l => canvas.remove(l));
-horizontalLines = [];
-verticalLines = [];
-if (!fabricImgInstance) return;
-const rCount = parseInt(rowsInput.value) || 1;
-const cCount = parseInt(colsInput.value) || 1;
-const imgBounds = fabricImgInstance.getBoundingRect();
-// Setup Horizontal Cut Guides
-for (let i = 1; i < rCount; i++) {
-const targetY = imgBounds.top + (imgBounds.height / rCount) * i;
-const hLine = new fabric.Line([imgBounds.left, targetY, imgBounds.left + imgBounds.width, targetY], {
-stroke: '#0071e3',
-strokeWidth: 2,
-selectable: true,
-hasControls: false,
-hasBorders: false,
-lockMovementX: true, // Only drag up and down
-hoverCursor: 'ns-resize'
-});
-// Constraint: Prevent users from dragging lines completely out of image bounds
-hLine.on('moving', function() {
-if (this.top < imgBounds.top) this.top = imgBounds.top;
-if (this.top > imgBounds.top + imgBounds.height) this.top = imgBounds.top + imgBounds.height;
-this.set({ x1: imgBounds.left, x2: imgBounds.left + imgBounds.width, y1: this.top, y2: this.top });
-});
-horizontalLines.push(hLine);
-canvas.add(hLine);
-}
-// Setup Vertical Cut Guides
-for (let j = 1; j < cCount; j++) {
-const targetX = imgBounds.left + (imgBounds.width / cCount) * j;
-const vLine = new fabric.Line([targetX, imgBounds.top, targetX, imgBounds.top + imgBounds.height], {
-stroke: '#0071e3',
-strokeWidth: 2,
-selectable: true,
-hasControls: false,
-hasBorders: false,
-lockMovementY: true, // Only drag left and right
-hoverCursor: 'ew-resize'
-});
-vLine.on('moving', function() {
-if (this.left < imgBounds.left) this.left = imgBounds.left;
-if (this.left > imgBounds.left + imgBounds.width) this.left = imgBounds.left + imgBounds.width;
-this.set({ y1: imgBounds.top, y2: imgBounds.top + imgBounds.height, left: this.left, x1: this.left, x2: this.left });
-});
-verticalLines.push(vLine);
-canvas.add(vLine);
-}
-canvas.bringToFront(canvas.getObjects('line'));
-}
-// Bind update triggers to settings controls
-rowsInput.addEventListener('input', generateSplitLines);
-colsInput.addEventListener('input', generateSplitLines);
-// Feature 4: Generate Section Previews from Custom Coordinates
-previewSplitBtn.addEventListener('click', function() {
-if (!fabricImgInstance) return;
-galleryGrid.innerHTML = '';
-generatedTilesData = [];
-const imgBounds = fabricImgInstance.getBoundingRect();
-const originalWidth = fabricImgInstance.width;
-const originalHeight = fabricImgInstance.height;
-const currentScaleX = fabricImgInstance.scaleX;
-const currentScaleY = fabricImgInstance.scaleY;
-// Map canvas line metrics back to the pixel arrays of the source image
-let yCuts = horizontalLines.map(l => (l.top - imgBounds.top) / currentScaleY);
-let xCuts = verticalLines.map(l => (l.left - imgBounds.left) / currentScaleX);
-// Sort custom positions numerically and pad edges
-yCuts.sort((a, b) => a - b);
-xCuts.sort((a, b) => a - b);
-yCuts.unshift(0);
-yCuts.push(originalHeight);
-xCuts.unshift(0);
-xCuts.push(originalWidth);
-// Access underlying pixel array data inside native HTML canvas
-const baseNativeImg = fabricImgInstance._element;
-const scratchCanvas = document.createElement('canvas');
-const scratchCtx = scratchCanvas.getContext('2d');
-let segmentIndex = 1;
-// Slice out bounding configurations sequentially
-for (let r = 0; r < yCuts.length - 1; r++) {
-for (let c = 0; c < xCuts.length - 1; c++) {
-const sX = xCuts[c];
-const sY = yCuts[r];
-const sW = xCuts[c+1] - sX;
-const sH = yCuts[r+1] - sY;
-// Skip micro segments or anomalies
-if (sW <= 1 || sH <= 1) continue;
-scratchCanvas.width = sW;
-scratchCanvas.height = sH;
-scratchCtx.clearRect(0,0,sW,sH);
-scratchCtx.drawImage(baseNativeImg, sX, sY, sW, sH, 0, 0, sW, sH);
-const dataUrl = scratchCanvas.toDataURL('image/png');
-// Construct visual UI elements
-const card = document.createElement('div');
+                    vpt[4] += e.clientX - this.lastPosX;
+                    vpt[5] += e.clientY - this.lastPosY;
+                    this.requestRenderAll();
+                    this.lastPosX = e.clientX;
+                    this.lastPosY = e.clientY;
+                }
+            });
+
+            canvas.on('mouse:up', function(opt) {
+                this.setViewportTransform(this.viewportTransform);
+                this.isDragging = false;
+                this.selection = true;
+            });
+        }
+
+        // Extract input files and draw base layer
+        imageInput.addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                fabric.Image.fromURL(f.target.result, function(img) {
+                    // Reset interface
+                    canvas.clear();
+                    canvas.setZoom(1);
+                    canvas.viewportTransform =;
+
+                    fabricImgInstance = img;
+                    img.set({ selectable: false, hoverCursor: 'default' });
+
+                    // Fit image into bounding framework intelligently
+                    const scaleFactor = Math.min((canvas.width - 40) / img.width, (canvas.height - 40) / img.height, 1);
+                    img.scale(scaleFactor);
+
+                    // Center asset alignment
+                    img.left = (canvas.width - (img.width * scaleFactor)) / 2;
+                    img.top = (canvas.height - (img.height * scaleFactor)) / 2;
+
+                    canvas.add(img);
+
+                    // Activate configuration panel controls
+                    rowsInput.disabled = false;
+                    colsInput.disabled = false;
+                    previewSplitBtn.disabled = false;
+                    canvasHint.style.display = 'block';
+
+                    generateSplitLines();
+                    canvas.renderAll();
+                });
+            };
+            reader.readAsDataURL(files[0]);
+        });
+
+        // Feature 2 & 3: Generate Draggable Guidelines
+        function generateSplitLines() {
+            // Wipe clean any existing vectors
+            horizontalLines.forEach(l => canvas.remove(l));
+            verticalLines.forEach(l => canvas.remove(l));
+            horizontalLines = [];
+            verticalLines = [];
+
+            if (!fabricImgInstance) return;
+
+            const rCount = parseInt(rowsInput.value) || 1;
+            const cCount = parseInt(colsInput.value) || 1;
+
+            const imgBounds = fabricImgInstance.getBoundingRect();
+
+            // Setup Horizontal Cut Guides
+            for (let i = 1; i < rCount; i++) {
+                const targetY = imgBounds.top + (imgBounds.height / rCount) * i;
+                const hLine = new fabric.Line([imgBounds.left, targetY, imgBounds.left + imgBounds.width, targetY], {
+                    stroke: '#0071e3',
+                    strokeWidth: 2,
+                    selectable: true,
+                    hasControls: false,
+                    hasBorders: false,
+                    lockMovementX: true, // Only drag up and down
+                    hoverCursor: 'ns-resize'
+                });
+
+                // Constraint: Prevent users from dragging lines completely out of image bounds
+                hLine.on('moving', function() {
+                    if (this.top < imgBounds.top) this.top = imgBounds.top;
+                    if (this.top > imgBounds.top + imgBounds.height) this.top = imgBounds.top + imgBounds.height;
+                    this.set({ x1: imgBounds.left, x2: imgBounds.left + imgBounds.width, y1: this.top, y2: this.top });
+                });
+
+                horizontalLines.push(hLine);
+                canvas.add(hLine);
+            }
+
+            // Setup Vertical Cut Guides
+            for (let j = 1; j < cCount; j++) {
+                const targetX = imgBounds.left + (imgBounds.width / cCount) * j;
+                const vLine = new fabric.Line([targetX, imgBounds.top, targetX, imgBounds.top + imgBounds.height], {
+                    stroke: '#0071e3',
+                    strokeWidth: 2,
+                    selectable: true,
+                    hasControls: false,
+                    hasBorders: false,
+                    lockMovementY: true, // Only drag left and right
+                    hoverCursor: 'ew-resize'
+                });
+
+                vLine.on('moving', function() {
+                    if (this.left < imgBounds.left) this.left = imgBounds.left;
+                    if (this.left > imgBounds.left + imgBounds.width) this.left = imgBounds.left + imgBounds.width;
+                    this.set({ y1: imgBounds.top, y2: imgBounds.top + imgBounds.height, left: this.left, x1: this.left, x2: this.left });
+                });
+
+                verticalLines.push(vLine);
+                canvas.add(vLine);
+            }
+            canvas.bringToFront(canvas.getObjects('line'));
+        }
+
+        // Bind update triggers to settings controls
+        rowsInput.addEventListener('input', generateSplitLines);
+        colsInput.addEventListener('input', generateSplitLines);
+
+        // Feature 4: Generate Section Previews from Custom Coordinates
+        previewSplitBtn.addEventListener('click', function() {
+            if (!fabricImgInstance) return;
+
+            galleryGrid.innerHTML = '';
+            generatedTilesData = [];
+
+            const imgBounds = fabricImgInstance.getBoundingRect();
+            const originalWidth = fabricImgInstance.width;
+            const originalHeight = fabricImgInstance.height;
+            const currentScaleX = fabricImgInstance.scaleX;
+            const currentScaleY = fabricImgInstance.scaleY;
+
+            // Map canvas line metrics back to the pixel arrays of the source image
+            let yCuts = horizontalLines.map(l => (l.top - imgBounds.top) / currentScaleY);
+            let xCuts = verticalLines.map(l => (l.left - imgBounds.left) / currentScaleX);
+
+            // Sort custom positions numerically and pad edges
+            yCuts.sort((a, b) => a - b);
+            xCuts.sort((a, b) => a - b);
+            yCuts.unshift(0);
+            yCuts.push(originalHeight);
+            xCuts.unshift(0);
+            xCuts.push(originalWidth);
+
+            // Access underlying pixel array data inside native HTML canvas
+            const baseNativeImg = fabricImgInstance._element;
+            const scratchCanvas = document.createElement('canvas');
+            const scratchCtx = scratchCanvas.getContext('2d');
+
+            let segmentIndex = 1;
+
+            // Slice out bounding configurations sequentially
+            for (let r = 0; r < yCuts.length - 1; r++) {
+                for (let c = 0; c < xCuts.length - 1; c++) {
+                    const sX = xCuts[c];
+                    const sY = yCuts[r];
+                    const sW = xCuts[c+1] - sX;
+                    const sH = yCuts[r+1] - sY;
+
+                    // Skip micro segments or anomalies
+                    if (sW <= 1 || sH <= 1) continue;
+
+                    scratchCanvas.width = sW;
+                    scratchCanvas.height = sH;
+                    scratchCtx.clearRect(0,0,sW,sH);
+                    scratchCtx.drawImage(baseNativeImg, sX, sY, sW, sH, 0, 0, sW, sH);
+
+                    const dataUrl = scratchCanvas.toDataURL('image/png');
+
+                    // Construct visual UI elements
+                    const card = document.createElement('div');
 card.className = 'tile-card selected'; // Default initialized to selected state
 card.dataset.index = segmentIndex;
 const img = document.createElement('img');
@@ -492,3 +523,6 @@ downloadBtn.disabled = false;
 });
 // Boot system framework on document ready
 window.onload = initCanvas;
+</script>
+</body>
+</html>
