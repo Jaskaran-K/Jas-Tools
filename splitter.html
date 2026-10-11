@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Image Splitter | J-Tools</title>
-    <!-- Verified live working paths for Fabric.js and JSZip libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <!-- We only need JSZip to create the downloadable bundle -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
@@ -83,7 +82,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 450px;
+            min-height: 500px;
+        }
+        canvas {
+            display: block;
+            cursor: crosshair;
         }
         .canvas-hint {
             position: absolute;
@@ -110,7 +113,6 @@
         button:hover { background: var(--accent-hover); }
         button:disabled { background: #333; color: #666; cursor: not-allowed; }
         
-        /* Preview Grid Section */
         .preview-section {
             margin-top: 40px;
             border-top: 1px solid var(--border-color);
@@ -184,7 +186,6 @@
         <h1>✂️ Advanced Image Splitter</h1>
         
         <div class="workspace">
-            <!-- Sidebar Controls -->
             <div class="panel-controls">
                 <div class="control-group">
                     <label for="imageInput">Upload Source Image</label>
@@ -204,16 +205,14 @@
                 <button id="previewSplitBtn" disabled>Preview Split Sections</button>
             </div>
 
-            <!-- Canvas Viewport -->
             <div class="canvas-area" id="canvasContainer">
                 <canvas id="mainCanvas"></canvas>
                 <div class="canvas-hint" id="canvasHint" style="display:none;">
-                    Scroll to Zoom | Hold Alt + Drag to Pan | Drag Lines to Customize
+                    Scroll to Zoom | Hold Space/Alt + Drag to Pan | Drag Lines to Customize
                 </div>
             </div>
         </div>
 
-        <!-- Dynamic Output Matrix Section -->
         <div class="preview-section" id="previewSection">
             <div class="preview-header">
                 <h2>Select Tiles to Keep</h2>
@@ -227,7 +226,6 @@
     </div>
 
     <script>
-        // DOM Elements
         const imageInput = document.getElementById('imageInput');
         const rowsInput = document.getElementById('rowsInput');
         const colsInput = document.getElementById('colsInput');
@@ -239,209 +237,296 @@
         const selectionCountText = document.getElementById('selectionCount');
         const downloadBtn = document.getElementById('downloadBtn');
 
-        // Global Application Context
-        let canvas = null;
-        let fabricImgInstance = null;
-        let horizontalLines = [];
-        let verticalLines = [];
-        let generatedTilesData = [];
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
 
-        // Initialize Fabric.js Canvas Environment
-        function initCanvas() {
-            canvas = new fabric.Canvas('mainCanvas', {
-                width: canvasContainer.clientWidth - 4,
-                height: 450,
-                selection: false,
-                backgroundColor: '#09090b'
-            });
-            setupZoomAndPan();
+        let img = null;
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX, startY;
+        let isSpacePressed = false;
+        let isAltPressed = false;
+
+        // Line handles (stored in normalized image pixel coordinates 0 to img.width / img.height)
+        let xSplits = []; // absolute original image pixels
+        let ySplits = [];
+
+        let activeLine = null; // { type: 'h'|'v', index: number }
+        const lineHitTolerance = 8; // clickable window around line in screen pixels
+
+        function initCanvasSize() {
+            canvas.width = canvasContainer.clientWidth;
+            canvas.height = 500;
+            draw();
+        }
+        window.addEventListener('resize', initCanvasSize);
+        initCanvasSize();
+
+        // Listen for spacebar or Alt key to toggle pan state
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') { isSpacePressed = true; canvas.style.cursor = 'grab'; e.preventDefault(); }
+            if (e.altKey) { isAltPressed = true; canvas.style.cursor = 'grab'; }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') { isSpacePressed = false; updateCursor(); }
+            if (e.code === 'AltLeft' || e.code === 'AltRight') { isAltPressed = false; updateCursor(); }
+        });
+
+        function updateCursor() {
+            if (isSpacePressed || isAltPressed) {
+                canvas.style.cursor = 'grab';
+            } else {
+                canvas.style.cursor = 'crosshair';
+            }
         }
 
-        // Feature 1: Zooming and Panning Engine
-        function setupZoomAndPan() {
-            canvas.on('mouse:wheel', function(opt) {
-                if (!fabricImgInstance) return;
-                var delta = opt.e.deltaY;
-                var zoom = canvas.getZoom();
-                zoom *= 0.999 ** delta;
-                if (zoom > 20) zoom = 20;
-                if (zoom < 0.05) zoom = 0.05;
-                canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-                opt.e.preventDefault();
-                opt.e.stopPropagation();
-            });
-
-            canvas.on('mouse:down', function(opt) {
-                var evt = opt.e;
-                if (evt.altKey === true || !opt.target) {
-                    this.isDragging = true;
-                    this.selection = false;
-                    this.lastPosX = evt.clientX;
-                    this.lastPosY = evt.clientY;
-                }
-            });
-
-            canvas.on('mouse:move', function(opt) {
-                if (this.isDragging) {
-                    var e = opt.e;
-                    var vpt = this.viewportTransform;
-                    vpt[4] += e.clientX - this.lastPosX;
-                    vpt[5] += e.clientY - this.lastPosY;
-                    this.requestRenderAll();
-                    this.lastPosX = e.clientX;
-                    this.lastPosY = e.clientY;
-                }
-            });
-
-            canvas.on('mouse:up', function(opt) {
-                this.setViewportTransform(this.viewportTransform);
-                this.isDragging = false;
-                this.selection = true;
-            });
-        }
-
-        // Extract input files and draw base layer using updated Fabric.js architecture
-        imageInput.addEventListener('change', function(e) {
+        imageInput.addEventListener('change', (e) => {
             const files = e.target.files;
             if (!files || files.length === 0) return;
 
             const reader = new FileReader();
-            reader.onload = function(f) {
-                const imgElement = new Image();
-                imgElement.src = f.target.result;
-                imgElement.onload = function() {
-                    // Reset interface
-                    canvas.clear();
-                    canvas.setZoom(1);
-                    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+            reader.onload = (f) => {
+                img = new Image();
+                img.onload = () => {
+                    // Reset zoom & transform to center image fit
+                    zoom = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
+                    panX = (canvas.width - img.width * zoom) / 2;
+                    panY = (canvas.height - img.height * zoom) / 2;
 
-                    fabricImgInstance = new fabric.Image(imgElement);
-                    fabricImgInstance.set({ selectable: false, hoverCursor: 'default' });
-
-                    // Fit image into bounding framework intelligently
-                    const scaleFactor = Math.min((canvas.width - 40) / fabricImgInstance.width, (canvas.height - 40) / fabricImgInstance.height, 1);
-                    fabricImgInstance.scale(scaleFactor);
-
-                    // Center asset alignment
-                    fabricImgInstance.left = (canvas.width - (fabricImgInstance.width * scaleFactor)) / 2;
-                    fabricImgInstance.top = (canvas.height - (fabricImgInstance.height * scaleFactor)) / 2;
-
-                    canvas.add(fabricImgInstance);
-
-                    // Activate configuration panel controls
                     rowsInput.disabled = false;
                     colsInput.disabled = false;
                     previewSplitBtn.disabled = false;
                     canvasHint.style.display = 'block';
 
-                    generateSplitLines();
-                    canvas.renderAll();
+                    resetSplitLines();
+                    draw();
                 };
+                img.src = f.target.result;
             };
             reader.readAsDataURL(files[0]);
         });
 
-        // Feature 2 & 3: Generate Draggable Guidelines
-        function generateSplitLines() {
-            // Wipe clean any existing vectors
-            horizontalLines.forEach(l => canvas.remove(l));
-            verticalLines.forEach(l => canvas.remove(l));
-            horizontalLines = [];
-            verticalLines = [];
-
-            if (!fabricImgInstance) return;
-
+        function resetSplitLines() {
+            if (!img) return;
             const rCount = parseInt(rowsInput.value) || 1;
             const cCount = parseInt(colsInput.value) || 1;
 
-            const imgBounds = fabricImgInstance.getBoundingRect();
+            xSplits = [];
+            ySplits = [];
 
-            // Setup Horizontal Cut Guides
-            for (let i = 1; i < rCount; i++) {
-                const targetY = imgBounds.top + (imgBounds.height / rCount) * i;
-                const hLine = new fabric.Line([imgBounds.left, targetY, imgBounds.left + imgBounds.width, targetY], {
-                    stroke: '#0071e3',
-                    strokeWidth: 2,
-                    selectable: true,
-                    hasControls: false,
-                    hasBorders: false,
-                    lockMovementX: true, // Only drag up and down
-                    hoverCursor: 'ns-resize'
-                });
-
-                // Constraint: Prevent users from dragging lines completely out of image bounds
-                hLine.on('moving', function() {
-                    if (this.top < imgBounds.top) this.top = imgBounds.top;
-                    if (this.top > imgBounds.top + imgBounds.height) this.top = imgBounds.top + imgBounds.height;
-                    this.set({ x1: imgBounds.left, x2: imgBounds.left + imgBounds.width, y1: this.top, y2: this.top });
-                });
-
-                horizontalLines.push(hLine);
-                canvas.add(hLine);
+            for (let i = 1; i < cCount; i++) {
+                xSplits.push((img.width / cCount) * i);
             }
-
-            // Setup Vertical Cut Guides
-            for (let j = 1; j < cCount; j++) {
-                const targetX = imgBounds.left + (imgBounds.width / cCount) * j;
-                const vLine = new fabric.Line([targetX, imgBounds.top, targetX, imgBounds.top + imgBounds.height], {
-                    stroke: '#0071e3',
-                    strokeWidth: 2,
-                    selectable: true,
-                    hasControls: false,
-                    hasBorders: false,
-                    lockMovementY: true, // Only drag left and right
-                    hoverCursor: 'ew-resize'
-                });
-
-                vLine.on('moving', function() {
-                    if (this.left < imgBounds.left) this.left = imgBounds.left;
-                    if (this.left > imgBounds.left + imgBounds.width) this.left = imgBounds.left + imgBounds.width;
-                    this.set({ y1: imgBounds.top, y2: imgBounds.top + imgBounds.height, left: this.left, x1: this.left, x2: this.left });
-                });
-
-                verticalLines.push(vLine);
-                canvas.add(vLine);
+            for (let j = 1; j < rCount; j++) {
+                ySplits.push((img.height / rCount) * j);
             }
-            canvas.bringToFront(canvas.getObjects('line'));
         }
 
-        // Bind update triggers to settings controls
-        rowsInput.addEventListener('input', generateSplitLines);
-        colsInput.addEventListener('input', generateSplitLines);
+        rowsInput.addEventListener('input', () => { resetSplitLines(); draw(); });
+        colsInput.addEventListener('input', () => { resetSplitLines(); draw(); });
 
-        // Feature 4: Generate Section Previews from Custom Coordinates
-        previewSplitBtn.addEventListener('click', function() {
-            if (!fabricImgInstance) return;
+        // Transform screen coords to original image pixels
+        function screenToImageCoords(sx, sy) {
+            const ix = (sx - panX) / zoom;
+            const iy = (sy - panY) / zoom;
+            return { x: ix, y: iy };
+        }
+
+        // Transform image coords back to screen coords
+        function imageToScreenCoords(ix, iy) {
+            const sx = ix * zoom + panX;
+            const sy = iy * zoom + panY;
+            return { x: sx, y: sy };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!img) return;
+
+            // Draw image with active zoom/pan transformation matrix
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(zoom, zoom);
+            ctx.drawImage(img, 0, 0);
+            ctx.restore();
+
+            // Draw splitting grid lines on top using clear overlay coordinates
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#0071e3';
+
+            // Vertical splits
+            xSplits.forEach((x) => {
+                const topPt = imageToScreenCoords(x, 0);
+                const botPt = imageToScreenCoords(x, img.height);
+                ctx.beginPath();
+                ctx.moveTo(topPt.x, topPt.y);
+                ctx.lineTo(botPt.x, botPt.y);
+                ctx.stroke();
+            });
+
+            // Horizontal splits
+            ySplits.forEach((y) => {
+                const leftPt = imageToScreenCoords(0, y);
+                const rightPt = imageToScreenCoords(img.width, y);
+                ctx.beginPath();
+                ctx.moveTo(leftPt.x, leftPt.y);
+                ctx.lineTo(rightPt.x, rightPt.y);
+                ctx.stroke();
+            });
+        }
+
+        // Mouse interaction logic
+        canvas.addEventListener('mousedown', (e) => {
+            if (!img) return;
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+
+            if (isSpacePressed || isAltPressed || e.button === 1) {
+                isDragging = true;
+                if (isSpacePressed || isAltPressed) canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // Check if user hit a line instead
+            const imgMouse = screenToImageCoords(startX, startY);
+
+            // Find nearest line
+            let clickedLine = null;
+            let minDist = lineHitTolerance;
+
+            xSplits.forEach((x, idx) => {
+                const screenX = imageToScreenCoords(x, 0).x;
+                const d = Math.abs(startX - screenX);
+                if (d < minDist) {
+                    minDist = d;
+                    clickedLine = { type: 'v', index: idx };
+                }
+            });
+
+            ySplits.forEach((y, idx) => {
+                const screenY = imageToScreenCoords(0, y).y;
+                const d = Math.abs(startY - screenY);
+                if (d < minDist) {
+                    minDist = d;
+                    clickedLine = { type: 'h', index: idx };
+                }
+            });
+
+            if (clickedLine) {
+                activeLine = clickedLine;
+            } else {
+                // Otherwise normal map pan action if mouse drag starts elsewhere
+                isDragging = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!img) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (activeLine) {
+                const imgMouse = screenToImageCoords(mouseX, mouseY);
+                if (activeLine.type === 'v') {
+                    // Restrict dragging to stay within image canvas bounds cleanly
+                    xSplits[activeLine.index] = Math.max(0, Math.min(img.width, imgMouse.x));
+                } else {
+                    ySplits[activeLine.index] = Math.max(0, Math.min(img.height, imgMouse.y));
+                }
+                draw();
+                return;
+            }
+
+            if (isDragging) {
+                panX += mouseX - startX;
+                panY += mouseY - startY;
+                startX = mouseX;
+                startY = mouseY;
+                draw();
+                return;
+            }
+
+            // Hover effects over active cursor points
+            const imgMouse = screenToImageCoords(mouseX, mouseY);
+            let hoverLine = null;
+            let minDist = lineHitTolerance;
+
+            xSplits.forEach((x) => {
+                const screenX = imageToScreenCoords(x, 0).x;
+                const d = Math.abs(mouseX - screenX);
+                if (d < minDist) { minDist = d; hoverLine = 'v'; }
+            });
+
+            ySplits.forEach((y) => {
+                const screenY = imageToScreenCoords(0, y).y;
+                const d = Math.abs(mouseY - screenY);
+                if (d < minDist) { minDist = d; hoverLine = 'h'; }
+            });
+
+            if (isSpacePressed || isAltPressed) {
+                canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+            } else if (hoverLine === 'v') {
+                canvas.style.cursor = 'ew-resize';
+            } else if (hoverLine === 'h') {
+                canvas.style.cursor = 'ns-resize';
+            } else {
+                canvas.style.cursor = 'crosshair';
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            activeLine = null;
+            updateCursor();
+        });
+
+        // Wheel Zoom Action
+        canvas.addEventListener('wheel', (e) => {
+            if (!img) return;
+            e.preventDefault();
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Anchor screen scaling points around mouse center position
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const nextZoom = Math.max(0.05, Math.min(50, zoom * zoomFactor));
+
+            // Shift pan coordinates appropriately to preserve mouse lock layer points
+            panX = mouseX - (mouseX - panX) * (nextZoom / zoom);
+            panY = mouseY - (mouseY - panY) * (nextZoom / zoom);
+            zoom = nextZoom;
+
+            draw();
+        }, { passive: false });
+
+
+        // Generate splits
+        let generatedTilesData = [];
+
+        previewSplitBtn.addEventListener('click', () => {
+            if (!img) return;
 
             galleryGrid.innerHTML = '';
             generatedTilesData = [];
 
-            const imgBounds = fabricImgInstance.getBoundingRect();
-            const originalWidth = fabricImgInstance.width;
-            const originalHeight = fabricImgInstance.height;
-            const currentScaleX = fabricImgInstance.scaleX;
-            const currentScaleY = fabricImgInstance.scaleY;
+            // Sort arrays numerically and insert edges
+            let xCuts = [...xSplits].sort((a,b) => a-b);
+            let yCuts = [...ySplits].sort((a,b) => a-b);
 
-            // Map canvas line metrics back to the pixel arrays of the source image
-            let yCuts = horizontalLines.map(l => (l.top - imgBounds.top) / currentScaleY);
-            let xCuts = verticalLines.map(l => (l.left - imgBounds.left) / currentScaleX);
+            xCuts.unshift(0); xCuts.push(img.width);
+            yCuts.unshift(0); yCuts.push(img.height);
 
-            // Sort custom positions numerically and pad edges
-            yCuts.sort((a, b) => a - b);
-            xCuts.sort((a, b) => a - b);
-            yCuts.unshift(0);
-            yCuts.push(originalHeight);
-            xCuts.unshift(0);
-            xCuts.push(originalWidth);
-
-            // Access underlying pixel array data inside native HTML canvas
-            const baseNativeImg = fabricImgInstance._element;
             const scratchCanvas = document.createElement('canvas');
             const scratchCtx = scratchCanvas.getContext('2d');
 
             let segmentIndex = 1;
 
-            // Slice out bounding configurations sequentially
             for (let r = 0; r < yCuts.length - 1; r++) {
                 for (let c = 0; c < xCuts.length - 1; c++) {
                     const sX = xCuts[c];
@@ -449,32 +534,29 @@
                     const sW = xCuts[c+1] - sX;
                     const sH = yCuts[r+1] - sY;
 
-                    // Skip micro segments or anomalies
                     if (sW <= 1 || sH <= 1) continue;
 
                     scratchCanvas.width = sW;
                     scratchCanvas.height = sH;
-                    scratchCtx.clearRect(0,0,sW,sH);
-                    scratchCtx.drawImage(baseNativeImg, sX, sY, sW, sH, 0, 0, sW, sH);
+                    scratchCtx.clearRect(0, 0, sW, sH);
+                    scratchCtx.drawImage(img, sX, sY, sW, sH, 0, 0, sW, sH);
 
                     const dataUrl = scratchCanvas.toDataURL('image/png');
 
-                    // Construct visual UI elements
                     const card = document.createElement('div');
-                    card.className = 'tile-card selected'; // Default initialized to selected state
+                    card.className = 'tile-card selected';
                     card.dataset.index = segmentIndex;
 
-                    const img = document.createElement('img');
-                    img.src = dataUrl;
+                    const tileImg = document.createElement('img');
+                    tileImg.src = dataUrl;
 
                     const indicator = document.createElement('div');
                     indicator.className = 'checkbox-indicator';
 
-                    card.appendChild(img);
+                    card.appendChild(tileImg);
                     card.appendChild(indicator);
                     galleryGrid.appendChild(card);
 
-                    // Retain data mappings
                     generatedTilesData.push({
                         id: segmentIndex,
                         dataUrl: dataUrl,
@@ -482,12 +564,11 @@
                         filename: `tile_row${r+1}_col${c+1}.png`
                     });
 
-                    // Event trigger for item selection toggle
                     card.addEventListener('click', function() {
                         const tileId = parseInt(this.dataset.index);
                         const match = generatedTilesData.find(t => t.id === tileId);
                         match.selected = !match.selected;
-                        
+
                         if (match.selected) {
                             this.classList.add('selected');
                         } else {
@@ -502,8 +583,6 @@
 
             previewSection.style.display = 'block';
             updateSelectionCounter();
-            
-            // Auto scroll down to preview section smooth view
             previewSection.scrollIntoView({ behavior: 'smooth' });
         });
 
@@ -513,8 +592,7 @@
             downloadBtn.disabled = totalSelected === 0;
         }
 
-        // Smart zip pipeline execution
-        downloadBtn.addEventListener('click', async function() {
+        downloadBtn.addEventListener('click', async () => {
             const activeTiles = generatedTilesData.filter(t => t.selected);
             if (activeTiles.length === 0) return;
 
@@ -524,25 +602,21 @@
             const zip = new JSZip();
 
             for (const tile of activeTiles) {
-                // Fetch binary payload format out of dynamic URL scheme data base64
                 const response = await fetch(tile.dataUrl);
                 const blob = await response.blob();
                 zip.file(tile.filename, blob);
             }
 
-            zip.generateAsync({ type: 'blob' }).then(function(content) {
+            zip.generateAsync({ type: 'blob' }).then((content) => {
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(content);
                 link.download = "jtools_split_manifest.zip";
                 link.click();
-                
+
                 downloadBtn.innerText = "Download Selected Pack (.ZIP)";
                 downloadBtn.disabled = false;
             });
         });
-
-        // Boot system framework on document ready
-        window.onload = initCanvas;
     </script>
 </body>
 </html>
