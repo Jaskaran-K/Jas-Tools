@@ -86,7 +86,7 @@
         }
         canvas {
             display: block;
-            cursor: crosshair;
+            cursor: grab;
         }
         .canvas-hint {
             position: absolute;
@@ -125,52 +125,44 @@
             align-items: center;
             margin-bottom: 20px;
         }
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-        }
-        .tile-card {
-            background: #2a2a30;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid transparent;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.2s ease;
-        }
-        .tile-card img {
-            width: 100%;
-            display: block;
-            height: auto;
-            background: #111;
-        }
-        .tile-card.selected {
-            border-color: var(--success-color);
-            box-shadow: 0 0 10px rgba(52, 199, 89, 0.3);
-        }
-        .checkbox-indicator {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: rgba(0,0,0,0.6);
-            border: 2px solid white;
+        .selection-buttons {
             display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .selection-buttons button {
+            padding: 8px 14px;
+            font-size: 0.9rem;
+            background: var(--border-color);
+        }
+        .selection-buttons button:hover {
+            background: #3a3a40;
+        }
+        .preview-canvas-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 25px;
+            width: 100%;
+            text-align: center;
+        }
+        .preview-canvas-container canvas {
+            display: block;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: crosshair;
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
+        }
+        .tile-info {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-        }
-        .tile-card.selected .checkbox-indicator {
-            background: var(--success-color);
-            border-color: var(--success-color);
-        }
-        .tile-card.selected .checkbox-indicator::after {
-            content: '✓';
-            color: white;
-            font-size: 11px;
-            font-weight: bold;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #2a2a30;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent-color);
         }
         .download-bar {
             margin-top: 25px;
@@ -208,7 +200,7 @@
             <div class="canvas-area" id="canvasContainer">
                 <canvas id="mainCanvas"></canvas>
                 <div class="canvas-hint" id="canvasHint" style="display:none;">
-                    Scroll to Zoom | Hold Space/Alt + Drag to Pan | Drag Lines to Customize
+                    Scroll to Zoom | Drag to Pan | Drag Lines to Customize
                 </div>
             </div>
         </div>
@@ -218,7 +210,16 @@
                 <h2>Select Tiles to Keep</h2>
                 <span id="selectionCount" style="color:#86868b;">0 tiles selected</span>
             </div>
-            <div class="gallery-grid" id="galleryGrid"></div>
+            <div class="selection-buttons">
+                <button id="selectAllBtn">Select All</button>
+                <button id="deselectAllBtn">Deselect All</button>
+            </div>
+            <div class="tile-info">
+                <span>Click on tiles in the image below to select/deselect them</span>
+            </div>
+            <div class="preview-canvas-container">
+                <canvas id="previewCanvas"></canvas>
+            </div>
             <div class="download-bar">
                 <button id="downloadBtn" style="background-color: var(--success-color);">Download Selected Pack (.ZIP)</button>
             </div>
@@ -233,12 +234,15 @@
         const canvasContainer = document.getElementById('canvasContainer');
         const canvasHint = document.getElementById('canvasHint');
         const previewSection = document.getElementById('previewSection');
-        const galleryGrid = document.getElementById('galleryGrid');
+        const previewCanvas = document.getElementById('previewCanvas');
         const selectionCountText = document.getElementById('selectionCount');
         const downloadBtn = document.getElementById('downloadBtn');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const deselectAllBtn = document.getElementById('deselectAllBtn');
 
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
+        const previewCtx = previewCanvas.getContext('2d');
 
         let img = null;
         let zoom = 1;
@@ -247,14 +251,12 @@
         let isDragging = false;
         let startX, startY;
         let isSpacePressed = false;
-        let isAltPressed = false;
 
-        // Line handles (stored in normalized image pixel coordinates 0 to img.width / img.height)
-        let xSplits = []; // absolute original image pixels
+        let xSplits = [];
         let ySplits = [];
 
-        let activeLine = null; // { type: 'h'|'v', index: number }
-        const lineHitTolerance = 8; // clickable window around line in screen pixels
+        let activeLine = null;
+        const lineHitTolerance = 8;
 
         function initCanvasSize() {
             canvas.width = canvasContainer.clientWidth;
@@ -264,21 +266,27 @@
         window.addEventListener('resize', initCanvasSize);
         initCanvasSize();
 
-        // Listen for spacebar or Alt key to toggle pan state
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') { isSpacePressed = true; canvas.style.cursor = 'grab'; e.preventDefault(); }
-            if (e.altKey) { isAltPressed = true; canvas.style.cursor = 'grab'; }
+            if (e.code === 'Space') {
+                isSpacePressed = true;
+                canvas.style.cursor = 'grab';
+                e.preventDefault();
+            }
         });
         window.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') { isSpacePressed = false; updateCursor(); }
-            if (e.code === 'AltLeft' || e.code === 'AltRight') { isAltPressed = false; updateCursor(); }
+            if (e.code === 'Space') {
+                isSpacePressed = false;
+                updateCursor();
+            }
         });
 
         function updateCursor() {
-            if (isSpacePressed || isAltPressed) {
+            if (isSpacePressed) {
                 canvas.style.cursor = 'grab';
+            } else if (activeLine) {
+                canvas.style.cursor = 'ew-resize';
             } else {
-                canvas.style.cursor = 'crosshair';
+                canvas.style.cursor = 'grab';
             }
         }
 
@@ -290,7 +298,6 @@
             reader.onload = (f) => {
                 img = new Image();
                 img.onload = () => {
-                    // Reset zoom & transform to center image fit
                     zoom = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
                     panX = (canvas.width - img.width * zoom) / 2;
                     panY = (canvas.height - img.height * zoom) / 2;
@@ -327,14 +334,12 @@
         rowsInput.addEventListener('input', () => { resetSplitLines(); draw(); });
         colsInput.addEventListener('input', () => { resetSplitLines(); draw(); });
 
-        // Transform screen coords to original image pixels
         function screenToImageCoords(sx, sy) {
             const ix = (sx - panX) / zoom;
             const iy = (sy - panY) / zoom;
             return { x: ix, y: iy };
         }
 
-        // Transform image coords back to screen coords
         function imageToScreenCoords(ix, iy) {
             const sx = ix * zoom + panX;
             const sy = iy * zoom + panY;
@@ -345,18 +350,15 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (!img) return;
 
-            // Draw image with active zoom/pan transformation matrix
             ctx.save();
             ctx.translate(panX, panY);
             ctx.scale(zoom, zoom);
             ctx.drawImage(img, 0, 0);
             ctx.restore();
 
-            // Draw splitting grid lines on top using clear overlay coordinates
             ctx.lineWidth = 2;
             ctx.strokeStyle = '#0071e3';
 
-            // Vertical splits
             xSplits.forEach((x) => {
                 const topPt = imageToScreenCoords(x, 0);
                 const botPt = imageToScreenCoords(x, img.height);
@@ -366,7 +368,6 @@
                 ctx.stroke();
             });
 
-            // Horizontal splits
             ySplits.forEach((y) => {
                 const leftPt = imageToScreenCoords(0, y);
                 const rightPt = imageToScreenCoords(img.width, y);
@@ -377,50 +378,42 @@
             });
         }
 
-        // Mouse interaction logic
         canvas.addEventListener('mousedown', (e) => {
             if (!img) return;
             const rect = canvas.getBoundingClientRect();
             startX = e.clientX - rect.left;
             startY = e.clientY - rect.top;
 
-            if (isSpacePressed || isAltPressed || e.button === 1) {
-                isDragging = true;
-                if (isSpacePressed || isAltPressed) canvas.style.cursor = 'grabbing';
-                return;
+            if (!isSpacePressed) {
+                let clickedLine = null;
+                let minDist = lineHitTolerance;
+
+                xSplits.forEach((x, idx) => {
+                    const screenX = imageToScreenCoords(x, 0).x;
+                    const d = Math.abs(startX - screenX);
+                    if (d < minDist) {
+                        minDist = d;
+                        clickedLine = { type: 'v', index: idx };
+                    }
+                });
+
+                ySplits.forEach((y, idx) => {
+                    const screenY = imageToScreenCoords(0, y).y;
+                    const d = Math.abs(startY - screenY);
+                    if (d < minDist) {
+                        minDist = d;
+                        clickedLine = { type: 'h', index: idx };
+                    }
+                });
+
+                if (clickedLine) {
+                    activeLine = clickedLine;
+                    return;
+                }
             }
 
-            // Check if user hit a line instead
-            const imgMouse = screenToImageCoords(startX, startY);
-
-            // Find nearest line
-            let clickedLine = null;
-            let minDist = lineHitTolerance;
-
-            xSplits.forEach((x, idx) => {
-                const screenX = imageToScreenCoords(x, 0).x;
-                const d = Math.abs(startX - screenX);
-                if (d < minDist) {
-                    minDist = d;
-                    clickedLine = { type: 'v', index: idx };
-                }
-            });
-
-            ySplits.forEach((y, idx) => {
-                const screenY = imageToScreenCoords(0, y).y;
-                const d = Math.abs(startY - screenY);
-                if (d < minDist) {
-                    minDist = d;
-                    clickedLine = { type: 'h', index: idx };
-                }
-            });
-
-            if (clickedLine) {
-                activeLine = clickedLine;
-            } else {
-                // Otherwise normal map pan action if mouse drag starts elsewhere
-                isDragging = true;
-            }
+            isDragging = true;
+            canvas.style.cursor = 'grabbing';
         });
 
         canvas.addEventListener('mousemove', (e) => {
@@ -432,7 +425,6 @@
             if (activeLine) {
                 const imgMouse = screenToImageCoords(mouseX, mouseY);
                 if (activeLine.type === 'v') {
-                    // Restrict dragging to stay within image canvas bounds cleanly
                     xSplits[activeLine.index] = Math.max(0, Math.min(img.width, imgMouse.x));
                 } else {
                     ySplits[activeLine.index] = Math.max(0, Math.min(img.height, imgMouse.y));
@@ -450,8 +442,6 @@
                 return;
             }
 
-            // Hover effects over active cursor points
-            const imgMouse = screenToImageCoords(mouseX, mouseY);
             let hoverLine = null;
             let minDist = lineHitTolerance;
 
@@ -467,14 +457,14 @@
                 if (d < minDist) { minDist = d; hoverLine = 'h'; }
             });
 
-            if (isSpacePressed || isAltPressed) {
-                canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+            if (isSpacePressed) {
+                canvas.style.cursor = 'grab';
             } else if (hoverLine === 'v') {
                 canvas.style.cursor = 'ew-resize';
             } else if (hoverLine === 'h') {
                 canvas.style.cursor = 'ns-resize';
             } else {
-                canvas.style.cursor = 'crosshair';
+                canvas.style.cursor = 'grab';
             }
         });
 
@@ -484,7 +474,6 @@
             updateCursor();
         });
 
-        // Wheel Zoom Action
         canvas.addEventListener('wheel', (e) => {
             if (!img) return;
             e.preventDefault();
@@ -493,11 +482,9 @@
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // Anchor screen scaling points around mouse center position
             const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
             const nextZoom = Math.max(0.05, Math.min(50, zoom * zoomFactor));
 
-            // Shift pan coordinates appropriately to preserve mouse lock layer points
             panX = mouseX - (mouseX - panX) * (nextZoom / zoom);
             panY = mouseY - (mouseY - panY) * (nextZoom / zoom);
             zoom = nextZoom;
@@ -505,19 +492,17 @@
             draw();
         }, { passive: false });
 
-
-        // Generate splits
         let generatedTilesData = [];
+        let xCuts = [];
+        let yCuts = [];
 
         previewSplitBtn.addEventListener('click', () => {
             if (!img) return;
 
-            galleryGrid.innerHTML = '';
             generatedTilesData = [];
 
-            // Sort arrays numerically and insert edges
-            let xCuts = [...xSplits].sort((a,b) => a-b);
-            let yCuts = [...ySplits].sort((a,b) => a-b);
+            xCuts = [...xSplits].sort((a,b) => a-b);
+            yCuts = [...ySplits].sort((a,b) => a-b);
 
             xCuts.unshift(0); xCuts.push(img.width);
             yCuts.unshift(0); yCuts.push(img.height);
@@ -543,47 +528,90 @@
 
                     const dataUrl = scratchCanvas.toDataURL('image/png');
 
-                    const card = document.createElement('div');
-                    card.className = 'tile-card selected';
-                    card.dataset.index = segmentIndex;
-
-                    const tileImg = document.createElement('img');
-                    tileImg.src = dataUrl;
-
-                    const indicator = document.createElement('div');
-                    indicator.className = 'checkbox-indicator';
-
-                    card.appendChild(tileImg);
-                    card.appendChild(indicator);
-                    galleryGrid.appendChild(card);
-
                     generatedTilesData.push({
                         id: segmentIndex,
                         dataUrl: dataUrl,
                         selected: true,
-                        filename: `tile_row${r+1}_col${c+1}.png`
-                    });
-
-                    card.addEventListener('click', function() {
-                        const tileId = parseInt(this.dataset.index);
-                        const match = generatedTilesData.find(t => t.id === tileId);
-                        match.selected = !match.selected;
-
-                        if (match.selected) {
-                            this.classList.add('selected');
-                        } else {
-                            this.classList.remove('selected');
-                        }
-                        updateSelectionCounter();
+                        filename: `tile_row${r+1}_col${c+1}.png`,
+                        row: r,
+                        col: c
                     });
 
                     segmentIndex++;
                 }
             }
 
+            drawPreviewCanvas();
             previewSection.style.display = 'block';
             updateSelectionCounter();
             previewSection.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        function drawPreviewCanvas() {
+            const containerWidth = previewSection.offsetWidth - 50;
+            const scale = Math.min(1, containerWidth / img.width);
+
+            previewCanvas.width = Math.max(1, img.width * scale);
+            previewCanvas.height = Math.max(1, img.height * scale);
+
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            previewCtx.drawImage(img, 0, 0, img.width, img.height, 0, 0, previewCanvas.width, previewCanvas.height);
+
+            previewCtx.lineWidth = 2;
+            previewCtx.strokeStyle = '#0071e3';
+
+            xCuts.forEach((x) => {
+                const screenX = x * scale;
+                previewCtx.beginPath();
+                previewCtx.moveTo(screenX, 0);
+                previewCtx.lineTo(screenX, previewCanvas.height);
+                previewCtx.stroke();
+            });
+
+            yCuts.forEach((y) => {
+                const screenY = y * scale;
+                previewCtx.beginPath();
+                previewCtx.moveTo(0, screenY);
+                previewCtx.lineTo(previewCanvas.width, screenY);
+                previewCtx.stroke();
+            });
+
+            generatedTilesData.forEach((tile) => {
+                if (!tile.selected) {
+                    const sX = xCuts[tile.col] * scale;
+                    const sY = yCuts[tile.row] * scale;
+                    const sW = (xCuts[tile.col + 1] - xCuts[tile.col]) * scale;
+                    const sH = (yCuts[tile.row + 1] - yCuts[tile.row]) * scale;
+
+                    previewCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                    previewCtx.fillRect(sX, sY, sW, sH);
+                }
+            });
+        }
+
+        previewCanvas.addEventListener('click', (e) => {
+            const rect = previewCanvas.getBoundingClientRect();
+            const clickX = (e.clientX - rect.left) * (img.width / previewCanvas.width);
+            const clickY = (e.clientY - rect.top) * (img.height / previewCanvas.height);
+
+            for (let r = 0; r < yCuts.length - 1; r++) {
+                for (let c = 0; c < xCuts.length - 1; c++) {
+                    const sX = xCuts[c];
+                    const sY = yCuts[r];
+                    const sW = xCuts[c + 1] - sX;
+                    const sH = yCuts[r + 1] - sY;
+
+                    if (clickX >= sX && clickX < sX + sW && clickY >= sY && clickY < sY + sH) {
+                        const tile = generatedTilesData.find(t => t.row === r && t.col === c);
+                        if (tile) {
+                            tile.selected = !tile.selected;
+                            drawPreviewCanvas();
+                            updateSelectionCounter();
+                        }
+                        return;
+                    }
+                }
+            }
         });
 
         function updateSelectionCounter() {
@@ -591,6 +619,18 @@
             selectionCountText.innerText = `${totalSelected} of ${generatedTilesData.length} tiles selected`;
             downloadBtn.disabled = totalSelected === 0;
         }
+
+        selectAllBtn.addEventListener('click', () => {
+            generatedTilesData.forEach(tile => tile.selected = true);
+            drawPreviewCanvas();
+            updateSelectionCounter();
+        });
+
+        deselectAllBtn.addEventListener('click', () => {
+            generatedTilesData.forEach(tile => tile.selected = false);
+            drawPreviewCanvas();
+            updateSelectionCounter();
+        });
 
         downloadBtn.addEventListener('click', async () => {
             const activeTiles = generatedTilesData.filter(t => t.selected);
