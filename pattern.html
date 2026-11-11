@@ -283,6 +283,23 @@
         }
         .history-btns { display: flex; gap: 6px; }
 
+        .num-wrap { display: inline-flex; align-items: center; gap: 3px; }
+        .num-wrap i { font-style: normal; color: var(--muted); font-size: 0.78rem; min-width: 10px; }
+        input.num {
+            width: 64px;
+            padding: 3px 6px;
+            font-size: 0.8rem;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        .field .label-line { align-items: center; }
+        .sub-section {
+            border-top: 1px solid var(--border-color);
+            padding-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
         #selectionPanel { border-color: #1f3a5c; }
         #selectionPanel.hidden { display: none; }
         .hidden { display: none !important; }
@@ -354,6 +371,7 @@
                     <label class="check"><input type="checkbox" id="scatterRotate" checked> Random rotation</label>
                     <label class="check"><input type="checkbox" id="scatterTone"> Random tones (great with gradients)</label>
                     <label class="check"><input type="checkbox" id="scatterAvoid" checked> Avoid overlaps (random layout)</label>
+                    <label class="check"><input type="checkbox" id="scatterGrad"> Per-object gradient (global colours, random angle)</label>
                     <label class="check"><input type="checkbox" id="scatterClear" checked> Clear existing elements first</label>
                     <button id="scatterBtn">🎲 Scatter</button>
                 </div>
@@ -524,31 +542,31 @@
                 <h3><span id="selTitle">Selected</span> <button class="small secondary" id="deselectBtn">Done</button></h3>
                 <div class="row">
                     <div class="field">
-                        <div class="label-line"><span>X</span><span class="val" id="propXVal"></span></div>
+                        <div class="label-line"><span>X</span><span class="num-wrap"><input type="number" class="num" data-num="x" step="0.1" aria-label="X"><i>%</i></span></div>
                         <input type="range" data-prop="x" id="propX" min="0" max="1" step="0.001">
                     </div>
                     <div class="field">
-                        <div class="label-line"><span>Y</span><span class="val" id="propYVal"></span></div>
+                        <div class="label-line"><span>Y</span><span class="num-wrap"><input type="number" class="num" data-num="y" step="0.1" aria-label="Y"><i>%</i></span></div>
                         <input type="range" data-prop="y" id="propY" min="0" max="1" step="0.001">
                     </div>
                 </div>
                 <div class="row">
                     <div class="field">
-                        <div class="label-line"><span>Size</span><span class="val" id="propSizeVal"></span></div>
+                        <div class="label-line"><span>Size</span><span class="num-wrap"><input type="number" class="num" data-num="size" step="0.5" aria-label="Size"><i>%</i></span></div>
                         <input type="range" data-prop="size" id="propSize" min="0.01" max="1.2" step="0.005">
                     </div>
                     <div class="field">
-                        <div class="label-line"><span>Stretch</span><span class="val" id="propStretchVal"></span></div>
+                        <div class="label-line"><span>Stretch</span><span class="num-wrap"><input type="number" class="num" data-num="stretch" step="1" aria-label="Stretch"><i>%</i></span></div>
                         <input type="range" data-prop="stretch" id="propStretch" min="0.2" max="3" step="0.01">
                     </div>
                 </div>
                 <div class="row">
                     <div class="field">
-                        <div class="label-line"><span>Rotation</span><span class="val" id="propRotationVal"></span></div>
+                        <div class="label-line"><span>Rotation</span><span class="num-wrap"><input type="number" class="num" data-num="rotation" step="1" aria-label="Rotation"><i>°</i></span></div>
                         <input type="range" data-prop="rotation" id="propRotation" min="0" max="360" step="1">
                     </div>
                     <div class="field">
-                        <div class="label-line"><span>Tone</span><span class="val" id="propToneVal"></span></div>
+                        <div class="label-line"><span>Tone</span><span class="num-wrap"><input type="number" class="num" data-num="tone" step="1" aria-label="Tone"><i>%</i></span></div>
                         <input type="range" data-prop="tone" id="propTone" min="0.05" max="1" step="0.01">
                     </div>
                 </div>
@@ -561,7 +579,7 @@
                         </select>
                     </div>
                     <div class="field" id="strokeField">
-                        <div class="label-line"><span>Line width</span><span class="val" id="propStrokeVal"></span></div>
+                        <div class="label-line"><span>Line width</span><span class="num-wrap"><input type="number" class="num" data-num="stroke" step="1" aria-label="Stroke"><i>%</i></span></div>
                         <input type="range" data-prop="stroke" id="propStroke" min="0.02" max="0.6" step="0.01">
                     </div>
                 </div>
@@ -572,6 +590,37 @@
                         <option value="ink">Ink mask</option>
                         <option value="sil">Silhouette</option>
                     </select>
+                </div>
+                <div class="sub-section" id="objGradSection">
+                    <label class="check"><input type="checkbox" data-gprop="on"> Object gradient</label>
+                    <div id="gOpts" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+                        <div class="grad-bar" id="gBar"></div>
+                        <div class="row">
+                            <div class="field"><span>Start</span><input type="color" data-gprop="a"></div>
+                            <div class="field"><span>Middle</span><input type="color" data-gprop="m"></div>
+                            <div class="field"><span>End</span><input type="color" data-gprop="b"></div>
+                        </div>
+                        <label class="check"><input type="checkbox" data-gprop="useMid"> Use middle colour</label>
+                        <div class="row">
+                            <div class="field">
+                                <span>Type</span>
+                                <select data-gprop="type">
+                                    <option value="linear">Linear</option>
+                                    <option value="radial">Radial</option>
+                                </select>
+                            </div>
+                            <div class="field" id="gAngleField">
+                                <div class="label-line"><span>Angle</span><span class="num-wrap"><input type="number" class="num" data-gnum="angle" step="1" aria-label="Gradient angle"><i>°</i></span></div>
+                                <input type="range" data-gprop="angle" min="0" max="360" step="1">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <button class="small secondary" id="gFromGlobal" title="Copy the colours from the Color tab">Use global colours</button>
+                            <button class="small secondary" id="gSwap">Swap ⇄</button>
+                        </div>
+                        <button class="small secondary" id="gApplyAll">Apply this gradient to all elements</button>
+                        <p class="help">The gradient follows the object (it moves and rotates with it) and ignores the global colour mode. Tone works as opacity.</p>
+                    </div>
                 </div>
                 <div class="row">
                     <button class="small secondary" id="dupBtn">Duplicate</button>
@@ -1007,9 +1056,19 @@
             tone: 1,
             style: 'fill',
             stroke: 0.15,
-            imgMode: 'ink'
+            imgMode: 'ink',
+            grad: defaultGrad()
         }, opts);
     }
+    function defaultGrad() {
+        return { on: false, type: 'linear', angle: 90, a: '#ffd166', m: '#e0457b', b: '#1a1033', useMid: false };
+    }
+    // Make sure older/loaded elements carry a full gradient object
+    function normalizeElement(el) {
+        el.grad = Object.assign(defaultGrad(), el.grad || {});
+        return el;
+    }
+    const cloneElement = el => JSON.parse(JSON.stringify(el));
     const getSelected = () => state.elements.find(e => e.id === state.selectedId) || null;
 
     // Half extents of an element as fractions of the tile
@@ -1025,24 +1084,60 @@
         return [r * el.stretch, r];
     }
 
+    const hasGrad = el => !!(el.grad && el.grad.on);
+
+    // Gradient in the object's unit space (object spans -1..1 on both axes)
+    function objectGradient(ctx, g) {
+        let grd;
+        if (g.type === 'radial') {
+            grd = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+        } else {
+            const a = g.angle * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+            grd = ctx.createLinearGradient(-c, -s, c, s);
+        }
+        const stops = g.useMid ? [g.a, g.m, g.b] : [g.a, g.b];
+        stops.forEach((col, i) => grd.addColorStop(i / (stops.length - 1), col));
+        return grd;
+    }
+    const gradScratch = document.createElement('canvas');
+
     function drawElementAt(ctx, el, cx, cy, S) {
         const [hw, hh] = halfExtents(el);
         const pw = hw * S, ph = hh * S;
+        const grad = hasGrad(el) ? el.grad : null;
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(el.rotation * Math.PI / 180);
         if (el.kind === 'image') {
             const img = state.images[el.imageId];
             if (img) {
-                const src = img[el.imgMode] || img.gray;
                 ctx.globalAlpha = el.tone;
-                ctx.drawImage(src, -pw, -ph, pw * 2, ph * 2);
+                if (grad) {
+                    // Use the image's ink/silhouette shape as a mask for the gradient
+                    const src = el.imgMode === 'sil' ? img.sil : img.ink;
+                    const w = Math.max(1, Math.ceil(pw * 2)), h = Math.max(1, Math.ceil(ph * 2));
+                    gradScratch.width = w; gradScratch.height = h;
+                    const t = gradScratch.getContext('2d');
+                    t.drawImage(src, 0, 0, w, h);
+                    t.globalCompositeOperation = 'source-in';
+                    t.translate(w / 2, h / 2);
+                    t.scale(w / 2, h / 2);
+                    t.fillStyle = objectGradient(t, grad);
+                    t.fillRect(-1, -1, 2, 2);
+                    ctx.drawImage(gradScratch, -pw, -ph, pw * 2, ph * 2);
+                } else {
+                    ctx.drawImage(img[el.imgMode] || img.gray, -pw, -ph, pw * 2, ph * 2);
+                }
             }
         } else {
             const shape = SHAPES[el.kind];
             const g = Math.round(255 * (1 - el.tone));
-            const col = `rgb(${g},${g},${g})`;
+            let col = `rgb(${g},${g},${g})`;
             ctx.scale(pw, ph);
+            if (grad) {
+                col = objectGradient(ctx, grad);
+                ctx.globalAlpha = el.tone;
+            }
             if (el.style === 'stroke') {
                 ctx.strokeStyle = col;
                 ctx.lineWidth = el.stroke;
@@ -1157,6 +1252,7 @@
         if (c.mode === 'bw') {
             for (let i = 0; i < n; i++) {
                 const j = i * 4;
+                if (d[j + 3] === 0) continue;
                 let v = d[j];
                 if (c.bwThreshold) v = v < 128 ? 0 : 255;
                 if (c.bwInvert) v = 255 - v;
@@ -1166,6 +1262,7 @@
             const lut = buildLUT();
             for (let i = 0; i < n; i++) {
                 const j = i * 4, k = (255 - d[j]) * 3;
+                if (d[j + 3] === 0) continue;
                 d[j] = lut[k]; d[j + 1] = lut[k + 1]; d[j + 2] = lut[k + 2];
             }
         } else {
@@ -1178,6 +1275,7 @@
             for (let y = 0; y < S; y++) {
                 for (let x = 0; x < S; x++) {
                     const i = y * S + x, j = i * 4;
+                    if (d[j + 3] === 0) continue;
                     const a = (255 - d[j]) / 255;
                     if (a <= 0) { d[j] = paper[0]; d[j + 1] = paper[1]; d[j + 2] = paper[2]; continue; }
                     let t;
@@ -1205,21 +1303,42 @@
     // =====================================================================
     // Tile rendering
     // =====================================================================
+    const layerCanvas = document.createElement('canvas');
     function renderTile(canvas, S) {
         if (canvas.width !== S) { canvas.width = S; canvas.height = S; }
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const ctx = canvas.getContext('2d');
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalAlpha = 1;
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, S, S);
+        ctx.globalCompositeOperation = 'source-over';
+
+        // Greyscale work layer: everything without its own gradient is drawn
+        // here in grey, colour-mapped, then composited. Objects with their own
+        // gradient are drawn straight onto the final canvas in colour. Runs are
+        // processed in order so stacking (forward/back) is preserved.
+        if (layerCanvas.width !== S) { layerCanvas.width = S; layerCanvas.height = S; }
+        const lctx = layerCanvas.getContext('2d', { willReadFrequently: true });
+        lctx.setTransform(1, 0, 0, 1, 0, 0);
+        lctx.globalAlpha = 1;
+        lctx.fillStyle = '#fff';
+        lctx.fillRect(0, 0, S, S);
         const m = state.math;
         if (m.type !== 'none' && m.opacity > 0) {
-            ctx.globalAlpha = m.opacity;
-            ctx.drawImage(getMathLayer(S), 0, 0);
-            ctx.globalAlpha = 1;
+            lctx.globalAlpha = m.opacity;
+            lctx.drawImage(getMathLayer(S), 0, 0);
+            lctx.globalAlpha = 1;
         }
-        for (const el of state.elements) drawElementWrapped(ctx, el, S);
-        colorPass(ctx, S);
+        const els = state.elements;
+        let i = 0;
+        while (i < els.length && !hasGrad(els[i])) drawElementWrapped(lctx, els[i++], S);
+        colorPass(lctx, S);
+        ctx.drawImage(layerCanvas, 0, 0);
+        while (i < els.length) {
+            if (hasGrad(els[i])) { drawElementWrapped(ctx, els[i++], S); continue; }
+            lctx.clearRect(0, 0, S, S);
+            while (i < els.length && !hasGrad(els[i])) drawElementWrapped(lctx, els[i++], S);
+            colorPass(lctx, S);
+            ctx.drawImage(layerCanvas, 0, 0);
+        }
         return canvas;
     }
 
@@ -1436,25 +1555,50 @@
         refreshSelectionPanel();
         requestView();
     }
-    const PROP_FORMAT = {
-        x: v => (v * 100).toFixed(1) + '%',
-        y: v => (v * 100).toFixed(1) + '%',
-        size: v => Math.round(v * 100) + '%',
-        stretch: v => Math.round(v * 100) + '%',
-        rotation: v => Math.round(v) + '°',
-        tone: v => Math.round(v * 100) + '%',
-        stroke: v => Math.round(v * 100) + '%'
+    // Number boxes: displayed value = stored value * scale
+    const NUM = {
+        x: { scale: 100, dec: 1, wrap: 1 },
+        y: { scale: 100, dec: 1, wrap: 1 },
+        size: { scale: 100, dec: 1, min: 0.005, max: 3 },
+        stretch: { scale: 100, dec: 0, min: 0.05, max: 10 },
+        rotation: { scale: 1, dec: 1, wrap: 360 },
+        tone: { scale: 100, dec: 0, min: 0.05, max: 1 },
+        stroke: { scale: 100, dec: 0, min: 0.01, max: 1 },
+        angle: { scale: 1, dec: 0, wrap: 360 }
     };
+    function normalizeNum(k, v) {
+        const spec = NUM[k];
+        if (spec.wrap) return mod(v, spec.wrap);
+        return clamp(v, spec.min, spec.max);
+    }
+    const fmtNum = (k, v) => String(+(v * NUM[k].scale).toFixed(NUM[k].dec));
+
     function syncSelectionInputs() {
         const el = getSelected();
         if (!el) return;
-        document.querySelectorAll('#selectionPanel [data-prop]').forEach(inp => {
-            const k = inp.dataset.prop;
-            if (document.activeElement !== inp || inp.tagName === 'SELECT') inp.value = el[k];
-            const label = $('prop' + k[0].toUpperCase() + k.slice(1) + 'Val');
-            if (label && PROP_FORMAT[k]) label.textContent = PROP_FORMAT[k](el[k]);
+        const panel = $('selectionPanel');
+        const active = document.activeElement;
+        panel.querySelectorAll('[data-prop]').forEach(inp => {
+            if (active !== inp || inp.tagName === 'SELECT') inp.value = el[inp.dataset.prop];
+        });
+        panel.querySelectorAll('[data-num]').forEach(inp => {
+            if (active !== inp) inp.value = fmtNum(inp.dataset.num, el[inp.dataset.num]);
+        });
+        const g = el.grad;
+        panel.querySelectorAll('[data-gprop]').forEach(inp => {
+            const k = inp.dataset.gprop;
+            if (inp.type === 'checkbox') inp.checked = !!g[k];
+            else if (active !== inp || inp.tagName === 'SELECT') inp.value = g[k];
+        });
+        panel.querySelectorAll('[data-gnum]').forEach(inp => {
+            if (active !== inp) inp.value = fmtNum(inp.dataset.gnum, g[inp.dataset.gnum]);
         });
         $('strokeField').classList.toggle('disabled', el.style !== 'stroke');
+        $('gOpts').classList.toggle('hidden', !g.on);
+        $('gAngleField').classList.toggle('disabled', g.type !== 'linear');
+        panel.querySelector('[data-gprop="m"]').disabled = !g.useMid;
+        const stops = g.useMid ? [g.a, g.m, g.b] : [g.a, g.b];
+        $('gBar').style.background = `linear-gradient(90deg, ${stops.join(', ')})`;
     }
     function refreshSelectionPanel() {
         const el = getSelected();
@@ -1467,28 +1611,85 @@
         $('imageOnlyProps').classList.toggle('hidden', !isImg);
         syncSelectionInputs();
     }
+
+    // One undo step per continuous edit (slider drag / typing session)
     let propEditing = false;
-    document.querySelectorAll('#selectionPanel [data-prop]').forEach(inp => {
-        inp.addEventListener('input', () => {
+    function beginEdit() { if (!propEditing) { pushHistory(); propEditing = true; } }
+    function endEdit() { propEditing = false; }
+    function afterEdit() { syncSelectionInputs(); requestRender(); }
+    const sel$ = q => $('selectionPanel').querySelectorAll(q);
+
+    sel$('[data-prop]').forEach(inp => {
+        const apply = () => {
             const el = getSelected();
             if (!el) return;
-            if (!propEditing) { pushHistory(); propEditing = true; }
-            const k = inp.dataset.prop;
-            el[k] = inp.tagName === 'SELECT' ? inp.value : parseFloat(inp.value);
-            syncSelectionInputs();
-            requestRender();
-        });
-        inp.addEventListener('change', () => {
-            propEditing = false;
-            if (inp.tagName === 'SELECT') { const el = getSelected(); if (el) el[inp.dataset.prop] = inp.value; syncSelectionInputs(); requestRender(); }
-        });
+            beginEdit();
+            el[inp.dataset.prop] = inp.tagName === 'SELECT' ? inp.value : parseFloat(inp.value);
+            afterEdit();
+        };
+        inp.addEventListener('input', apply);
+        inp.addEventListener('change', () => { if (inp.tagName === 'SELECT') apply(); endEdit(); });
     });
+
+    function bindNumberBox(inp, k, target) {
+        inp.addEventListener('input', () => {
+            const el = getSelected();
+            const v = parseFloat(inp.value);
+            if (!el || !isFinite(v)) return;
+            beginEdit();
+            target(el)[k] = normalizeNum(k, v / NUM[k].scale);
+            afterEdit();
+        });
+        inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+            if (e.key === 'Escape') { e.preventDefault(); inp.blur(); }
+        });
+        // Re-format (e.g. wrapped / clamped values) once editing finishes
+        inp.addEventListener('blur', () => { endEdit(); syncSelectionInputs(); });
+    }
+    sel$('[data-num]').forEach(inp => bindNumberBox(inp, inp.dataset.num, el => el));
+    sel$('[data-gnum]').forEach(inp => bindNumberBox(inp, inp.dataset.gnum, el => el.grad));
+
+    sel$('[data-gprop]').forEach(inp => {
+        const k = inp.dataset.gprop;
+        const apply = () => {
+            const el = getSelected();
+            if (!el) return;
+            beginEdit();
+            el.grad[k] = inp.type === 'checkbox' ? inp.checked : inp.type === 'range' ? parseFloat(inp.value) : inp.value;
+            afterEdit();
+        };
+        inp.addEventListener('input', apply);
+        inp.addEventListener('change', () => { apply(); endEdit(); });
+    });
+    $('gFromGlobal').onclick = () => {
+        const el = getSelected();
+        if (!el) return;
+        pushHistory();
+        const [a, m, b] = state.color.stops;
+        Object.assign(el.grad, { a, m, b, useMid: state.color.useMid });
+        afterEdit();
+    };
+    $('gSwap').onclick = () => {
+        const el = getSelected();
+        if (!el) return;
+        pushHistory();
+        [el.grad.a, el.grad.b] = [el.grad.b, el.grad.a];
+        afterEdit();
+    };
+    $('gApplyAll').onclick = () => {
+        const el = getSelected();
+        if (!el) return;
+        pushHistory();
+        state.elements.forEach(o => { if (o !== el) o.grad = Object.assign({}, el.grad); });
+        afterEdit();
+    };
 
     function duplicateSelected() {
         const el = getSelected();
         if (!el) return;
         pushHistory();
-        const copy = Object.assign({}, el, { id: state.nextId++, x: mod(el.x + 0.06, 1), y: mod(el.y + 0.06, 1) });
+        const copy = Object.assign(cloneElement(el), { id: state.nextId++, x: mod(el.x + 0.06, 1), y: mod(el.y + 0.06, 1) });
         state.elements.push(copy);
         select(copy.id);
         requestRender();
@@ -1623,6 +1824,7 @@
         const rot = $('scatterRotate').checked;
         const toneVar = $('scatterTone').checked;
         const avoid = $('scatterAvoid').checked;
+        const withGrad = $('scatterGrad').checked;
         const rnd = Math.random;
 
         const shapeKeys = Object.keys(SHAPES);
@@ -1672,7 +1874,13 @@
                 x: mod(p.x, 1), y: mod(p.y, 1), size: p.size,
                 rotation: rot ? Math.floor(rnd() * 360) : 0,
                 tone: toneVar ? 0.25 + rnd() * 0.75 : 1,
-                style
+                style,
+                grad: withGrad ? Object.assign(defaultGrad(), {
+                    on: true,
+                    a: state.color.stops[0], m: state.color.stops[1], b: state.color.stops[2],
+                    useMid: state.color.useMid,
+                    angle: Math.floor(rnd() * 360)
+                }) : defaultGrad()
             }));
         }
         select(null);
@@ -2011,7 +2219,7 @@
             const nums = Object.keys(state.images).map(id => parseInt(id.replace(/\D/g, '')) || 0);
             state.nextImageId = Math.max(0, ...nums) + 1;
             pushHistory();
-            state.elements = data.elements || [];
+            state.elements = (data.elements || []).map(normalizeElement);
             state.nextId = Math.max(0, ...state.elements.map(el => el.id)) + 1;
             state.math = Object.assign({ type: 'none', params: {}, edge: 'hard', level: 0.5, opacity: 1, invert: false }, data.math);
             if (!GENS[state.math.type]) state.math.type = 'none';
