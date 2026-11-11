@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seamless Pattern Generator | J-Tools</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --panel-bg: #202025;
+            --text-color: #f5f5f7;
+            --muted: #86868b;
+            --accent-color: #0071e3;
+            --accent-hover: #0077ed;
+            --success-color: #34c759;
+            --danger-color: #ff453a;
+            --border-color: #2a2a30;
+            --input-bg: #2a2a30;
+            --input-border: #3a3a40;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 1280px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        @media (max-width: 600px) {
+            body { padding: 16px 10px; }
+            .container { padding: 18px 14px; }
+        }
+        a.back-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        a.back-link:hover { color: var(--accent-color); }
+        h1 { margin: 0 0 6px 0; font-size: 2rem; }
+        .subtitle { color: var(--muted); margin: 0; font-size: 0.95rem; }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 25px;
+            margin-top: 24px;
+        }
+        @media (max-width: 900px) {
+            .workspace { grid-template-columns: 1fr; }
+        }
+
+        /* ---------- Left panel ---------- */
+        .panel-controls { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            background: var(--input-bg);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+        }
+        .tabs button {
+            background: transparent;
+            color: var(--muted);
+            padding: 8px 2px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border-radius: 6px;
+        }
+        .tabs button:hover { background: #34343a; color: var(--text-color); }
+        .tabs button.active { background: var(--accent-color); color: white; }
+        .tab-panel { display: none; flex-direction: column; gap: 14px; }
+        .tab-panel.active { display: flex; }
+
+        .section {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .section h3 {
+            margin: 0;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .help { font-size: 0.78rem; color: var(--muted); line-height: 1.45; margin: 0; }
+
+        .row { display: flex; gap: 10px; align-items: center; }
+        .row > * { flex: 1; min-width: 0; }
+        .field { display: flex; flex-direction: column; gap: 5px; font-size: 0.82rem; color: var(--muted); }
+        .field .label-line { display: flex; justify-content: space-between; }
+        .field .val { color: var(--text-color); font-variant-numeric: tabular-nums; }
+        .field.disabled { opacity: 0.4; pointer-events: none; }
+
+        select, input[type="number"], input[type="file"] {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            width: 100%;
+        }
+        input[type="range"] { width: 100%; accent-color: var(--accent-color); }
+        input[type="color"] {
+            width: 100%;
+            height: 34px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            padding: 2px;
+            cursor: pointer;
+        }
+        label.check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-color);
+            cursor: pointer;
+            user-select: none;
+        }
+        label.check input { accent-color: var(--accent-color); width: 16px; height: 16px; }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: var(--accent-hover); }
+        button:disabled { background: #333; color: #666; cursor: not-allowed; }
+        button.secondary { background: var(--input-bg); color: var(--text-color); }
+        button.secondary:hover { background: #3a3a40; }
+        button.danger { background: #3a1f1f; color: #ff8a80; }
+        button.danger:hover { background: #4d2424; }
+        button.success { background: var(--success-color); color: #04210c; }
+        button.success:hover { background: #2fb350; }
+        button.small { padding: 6px 10px; font-size: 0.78rem; }
+
+        .segmented {
+            display: inline-flex;
+            background: var(--input-bg);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+        }
+        .segmented button {
+            background: transparent;
+            color: var(--muted);
+            padding: 7px 12px;
+            font-size: 0.82rem;
+        }
+        .segmented button:hover { background: #34343a; color: var(--text-color); }
+        .segmented button.active { background: var(--accent-color); color: #fff; }
+
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+        }
+        .palette button {
+            background: var(--input-bg);
+            padding: 4px;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            position: relative;
+        }
+        .palette button:hover { border-color: var(--accent-color); background: #303036; }
+        .palette canvas, .palette img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .palette .remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--danger-color);
+            color: white;
+            font-size: 11px;
+            line-height: 18px;
+            text-align: center;
+            pointer-events: auto;
+            display: none;
+        }
+        .palette button:hover .remove { display: block; }
+        .empty-note { font-size: 0.8rem; color: var(--muted); font-style: italic; }
+
+        .grad-bar {
+            height: 18px;
+            border-radius: 5px;
+            border: 1px solid var(--input-border);
+        }
+
+        /* ---------- View area ---------- */
+        .view-column { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+        .view-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .view-toolbar .opts { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+        .view-toolbar .inline-range {
+            display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--muted);
+        }
+        .view-toolbar .inline-range input { width: 110px; }
+        .canvas-area {
+            background: #09090b;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            height: min(72vh, 760px);
+            min-height: 380px;
+        }
+        #viewCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            cursor: default;
+        }
+        .canvas-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.72);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--muted);
+            pointer-events: none;
+            width: fit-content;
+            max-width: calc(100% - 20px);
+            transition: opacity 0.25s;
+        }
+        .canvas-area:hover .canvas-hint { opacity: 0; }
+        .status-line {
+            font-size: 0.8rem;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .history-btns { display: flex; gap: 6px; }
+
+        #selectionPanel { border-color: #1f3a5c; }
+        #selectionPanel.hidden { display: none; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="index.html" class="back-link">← Back to Tools</a>
+    <h1>🔁 Seamless Pattern Generator</h1>
+    <p class="subtitle">Build tileable patterns from shapes, your own images, or mathematical generators. Everything that crosses an edge wraps around to the opposite side.</p>
+
+    <div class="workspace">
+        <!-- ================= LEFT PANEL ================= -->
+        <div class="panel-controls">
+            <div class="tabs" id="tabs">
+                <button data-tab="shapes" class="active">Shapes</button>
+                <button data-tab="images">Images</button>
+                <button data-tab="math">Math</button>
+                <button data-tab="color">Color</button>
+                <button data-tab="export">Export</button>
+            </div>
+
+            <!-- ---------- SHAPES ---------- -->
+            <div class="tab-panel active" data-panel="shapes">
+                <div class="section">
+                    <h3>Add a shape</h3>
+                    <div class="palette" id="shapePalette"></div>
+                    <p class="help">Click a shape to drop it in the centre tile, then drag it around. Drag it over an edge to see it wrap.</p>
+                </div>
+                <div class="section">
+                    <h3>Scatter / Arrange</h3>
+                    <div class="field">
+                        <span>Source</span>
+                        <select id="scatterSource"></select>
+                    </div>
+                    <div class="row">
+                        <div class="field">
+                            <span>Layout</span>
+                            <select id="scatterLayout">
+                                <option value="random">Random</option>
+                                <option value="grid">Grid</option>
+                                <option value="brick">Half-drop</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <span>Style</span>
+                            <select id="scatterStyle">
+                                <option value="fill">Filled</option>
+                                <option value="stroke">Outline</option>
+                                <option value="mixed">Mixed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="label-line"><span>Count</span><span class="val" id="scatterCountVal">12</span></div>
+                        <input type="range" id="scatterCount" min="1" max="120" value="12">
+                    </div>
+                    <div class="row">
+                        <div class="field">
+                            <div class="label-line"><span>Min size</span><span class="val" id="scatterMinVal">6%</span></div>
+                            <input type="range" id="scatterMin" min="1" max="60" value="6">
+                        </div>
+                        <div class="field">
+                            <div class="label-line"><span>Max size</span><span class="val" id="scatterMaxVal">16%</span></div>
+                            <input type="range" id="scatterMax" min="1" max="60" value="16">
+                        </div>
+                    </div>
+                    <label class="check"><input type="checkbox" id="scatterRotate" checked> Random rotation</label>
+                    <label class="check"><input type="checkbox" id="scatterTone"> Random tones (great with gradients)</label>
+                    <label class="check"><input type="checkbox" id="scatterAvoid" checked> Avoid overlaps (random layout)</label>
+                    <label class="check"><input type="checkbox" id="scatterClear" checked> Clear existing elements first</label>
+                    <button id="scatterBtn">🎲 Scatter</button>
+                </div>
+                <div class="section">
+                    <h3>Elements <span id="elementCount" style="text-transform:none;letter-spacing:0">0</span></h3>
+                    <button class="danger" id="clearAllBtn">Clear all elements</button>
+                </div>
+            </div>
+
+            <!-- ---------- IMAGES ---------- -->
+            <div class="tab-panel" data-panel="images">
+                <div class="section">
+                    <h3>Import images</h3>
+                    <input type="file" id="imageInput" accept="image/*" multiple>
+                    <p class="help">Images are converted to greyscale so they follow the colour settings. Click a thumbnail to add it to the pattern. Images can also be used as the Scatter source on the Shapes tab.</p>
+                    <div class="palette" id="imagePalette"></div>
+                    <div class="empty-note" id="imageEmpty">No images imported yet.</div>
+                </div>
+                <div class="section">
+                    <h3>Image modes</h3>
+                    <p class="help"><b>Greyscale</b> – the picture as-is.<br><b>Ink mask</b> – dark areas become ink, white backgrounds disappear (best for drawings &amp; logos).<br><b>Silhouette</b> – uses the transparency of PNGs as a solid shape.</p>
+                </div>
+            </div>
+
+            <!-- ---------- MATH ---------- -->
+            <div class="tab-panel" data-panel="math">
+                <div class="section">
+                    <h3>Background generator</h3>
+                    <div class="field">
+                        <span>Pattern</span>
+                        <select id="mathType"></select>
+                    </div>
+                    <div id="mathParams" style="display:flex;flex-direction:column;gap:12px"></div>
+                </div>
+                <div class="section" id="mathLook">
+                    <h3>Look</h3>
+                    <div class="field">
+                        <span>Edges</span>
+                        <div class="segmented" id="mathEdge">
+                            <button data-v="hard" class="active">Hard</button>
+                            <button data-v="smooth">Smooth</button>
+                        </div>
+                    </div>
+                    <div class="field" id="mathLevelField">
+                        <div class="label-line"><span>Threshold</span><span class="val" id="mathLevelVal">0.50</span></div>
+                        <input type="range" id="mathLevel" min="0.02" max="0.98" step="0.01" value="0.5">
+                    </div>
+                    <div class="field">
+                        <div class="label-line"><span>Strength</span><span class="val" id="mathOpacityVal">100%</span></div>
+                        <input type="range" id="mathOpacity" min="0" max="100" value="100">
+                    </div>
+                    <label class="check"><input type="checkbox" id="mathInvert"> Invert</label>
+                    <p class="help">All generators use whole-number frequencies across the tile, so the result is always seamless.</p>
+                </div>
+            </div>
+
+            <!-- ---------- COLOR ---------- -->
+            <div class="tab-panel" data-panel="color">
+                <div class="section">
+                    <h3>Colour mode</h3>
+                    <div class="segmented" id="colorMode">
+                        <button data-v="bw" class="active">Black &amp; White</button>
+                        <button data-v="gradient">Gradient</button>
+                    </div>
+                </div>
+                <div class="section" id="bwOptions">
+                    <h3>Black &amp; White</h3>
+                    <label class="check"><input type="checkbox" id="bwInvert"> Invert (white ink on black)</label>
+                    <label class="check"><input type="checkbox" id="bwThreshold"> Pure black/white (no grey tones)</label>
+                </div>
+                <div class="section hidden" id="gradOptions">
+                    <h3>Gradient</h3>
+                    <div class="field">
+                        <span>Preset</span>
+                        <select id="gradPreset"></select>
+                    </div>
+                    <div class="grad-bar" id="gradBar"></div>
+                    <div class="row">
+                        <div class="field"><span>Start</span><input type="color" id="gradA" value="#ffd166"></div>
+                        <div class="field"><span>Middle</span><input type="color" id="gradB" value="#e0457b"></div>
+                        <div class="field"><span>End</span><input type="color" id="gradC" value="#1a1033"></div>
+                    </div>
+                    <label class="check"><input type="checkbox" id="gradUseMid" checked> Use middle colour</label>
+                    <div class="field">
+                        <span>Apply gradient as</span>
+                        <select id="gradStyle">
+                            <option value="tone">Tone map (paper → ink)</option>
+                            <option value="sweep">Spatial sweep across the tile</option>
+                        </select>
+                    </div>
+                    <div id="toneOpts">
+                        <p class="help">Each grey level is mapped onto the gradient: background = start colour, full ink = end colour. Use element tones / smooth math edges to reach the colours in between.</p>
+                    </div>
+                    <div id="sweepOpts" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+                        <div class="row">
+                            <div class="field">
+                                <span>Direction</span>
+                                <select id="sweepDir">
+                                    <option value="h">Horizontal</option>
+                                    <option value="v">Vertical</option>
+                                    <option value="d">Diagonal</option>
+                                    <option value="r">Radial</option>
+                                </select>
+                            </div>
+                            <div class="field"><span>Background</span><input type="color" id="sweepPaper" value="#ffffff"></div>
+                        </div>
+                        <div class="field">
+                            <div class="label-line"><span>Cycles per tile</span><span class="val" id="sweepCyclesVal">1</span></div>
+                            <input type="range" id="sweepCycles" min="1" max="6" value="1">
+                        </div>
+                        <p class="help">Ink is coloured by its position. The sweep runs out and back within the tile so it stays seamless.</p>
+                    </div>
+                    <label class="check"><input type="checkbox" id="gradInvert"> Reverse gradient</label>
+                </div>
+            </div>
+
+            <!-- ---------- EXPORT ---------- -->
+            <div class="tab-panel" data-panel="export">
+                <div class="section">
+                    <h3>Tile</h3>
+                    <div class="field">
+                        <span>Export size</span>
+                        <select id="exportSize">
+                            <option value="256">256 × 256</option>
+                            <option value="512">512 × 512</option>
+                            <option value="1024" selected>1024 × 1024</option>
+                            <option value="2048">2048 × 2048</option>
+                            <option value="4096">4096 × 4096</option>
+                        </select>
+                    </div>
+                    <button class="success" id="downloadTileBtn">Download tile (.PNG)</button>
+                </div>
+                <div class="section">
+                    <h3>Tiled preview sheet</h3>
+                    <div class="field">
+                        <span>Repeats</span>
+                        <select id="sheetRepeats">
+                            <option value="2">2 × 2</option>
+                            <option value="3" selected>3 × 3</option>
+                            <option value="4">4 × 4</option>
+                            <option value="6">6 × 6</option>
+                        </select>
+                    </div>
+                    <button class="secondary" id="downloadSheetBtn">Download sheet (.PNG)</button>
+                </div>
+                <div class="section">
+                    <h3>Project</h3>
+                    <p class="help">Save everything (including imported images) to a .json file and load it again later.</p>
+                    <div class="row">
+                        <button class="secondary" id="saveProjectBtn">Save project</button>
+                        <button class="secondary" id="loadProjectBtn">Load project</button>
+                    </div>
+                    <input type="file" id="projectInput" accept=".json,application/json" class="hidden">
+                </div>
+                <div class="section">
+                    <h3>Preview quality</h3>
+                    <select id="previewSize">
+                        <option value="256">Fast (256 px)</option>
+                        <option value="512" selected>Normal (512 px)</option>
+                        <option value="1024">High (1024 px)</option>
+                    </select>
+                    <p class="help">Resolution used for the live view only. Exports are always rendered fresh at the export size.</p>
+                </div>
+            </div>
+
+            <!-- ---------- SELECTION ---------- -->
+            <div class="section hidden" id="selectionPanel">
+                <h3><span id="selTitle">Selected</span> <button class="small secondary" id="deselectBtn">Done</button></h3>
+                <div class="row">
+                    <div class="field">
+                        <div class="label-line"><span>X</span><span class="val" id="propXVal"></span></div>
+                        <input type="range" data-prop="x" id="propX" min="0" max="1" step="0.001">
+                    </div>
+                    <div class="field">
+                        <div class="label-line"><span>Y</span><span class="val" id="propYVal"></span></div>
+                        <input type="range" data-prop="y" id="propY" min="0" max="1" step="0.001">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="field">
+                        <div class="label-line"><span>Size</span><span class="val" id="propSizeVal"></span></div>
+                        <input type="range" data-prop="size" id="propSize" min="0.01" max="1.2" step="0.005">
+                    </div>
+                    <div class="field">
+                        <div class="label-line"><span>Stretch</span><span class="val" id="propStretchVal"></span></div>
+                        <input type="range" data-prop="stretch" id="propStretch" min="0.2" max="3" step="0.01">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="field">
+                        <div class="label-line"><span>Rotation</span><span class="val" id="propRotationVal"></span></div>
+                        <input type="range" data-prop="rotation" id="propRotation" min="0" max="360" step="1">
+                    </div>
+                    <div class="field">
+                        <div class="label-line"><span>Tone</span><span class="val" id="propToneVal"></span></div>
+                        <input type="range" data-prop="tone" id="propTone" min="0.05" max="1" step="0.01">
+                    </div>
+                </div>
+                <div class="row" id="shapeOnlyProps">
+                    <div class="field">
+                        <span>Style</span>
+                        <select data-prop="style" id="propStyle">
+                            <option value="fill">Filled</option>
+                            <option value="stroke">Outline</option>
+                        </select>
+                    </div>
+                    <div class="field" id="strokeField">
+                        <div class="label-line"><span>Line width</span><span class="val" id="propStrokeVal"></span></div>
+                        <input type="range" data-prop="stroke" id="propStroke" min="0.02" max="0.6" step="0.01">
+                    </div>
+                </div>
+                <div class="field" id="imageOnlyProps">
+                    <span>Image mode</span>
+                    <select data-prop="imgMode" id="propImgMode">
+                        <option value="gray">Greyscale</option>
+                        <option value="ink">Ink mask</option>
+                        <option value="sil">Silhouette</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <button class="small secondary" id="dupBtn">Duplicate</button>
+                    <button class="small secondary" id="fwdBtn">Forward</button>
+                    <button class="small secondary" id="backBtn">Back</button>
+                    <button class="small danger" id="delBtn">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW ================= -->
+        <div class="view-column">
+            <div class="view-toolbar">
+                <div class="segmented" id="viewMode">
+                    <button data-v="single" class="active">Single (3×3)</button>
+                    <button data-v="tiled">Tiled</button>
+                </div>
+                <div class="opts">
+                    <label class="check" id="dimOpt"><input type="checkbox" id="dimNeighbours" checked> Dim wrap tiles</label>
+                    <label class="check hidden" id="seamOpt"><input type="checkbox" id="showSeams"> Show seams</label>
+                    <div class="inline-range hidden" id="tilesOpt">
+                        <span>Tiles</span>
+                        <input type="range" id="tileCount" min="2" max="16" value="4">
+                        <span class="val" id="tileCountVal">4</span>
+                    </div>
+                    <div class="history-btns">
+                        <button class="small secondary" id="undoBtn" title="Undo (Ctrl+Z)">↶ Undo</button>
+                        <button class="small secondary" id="redoBtn" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+                    </div>
+                </div>
+            </div>
+            <div class="canvas-area" id="canvasArea">
+                <canvas id="viewCanvas"></canvas>
+                <div class="canvas-hint" id="canvasHint"></div>
+            </div>
+            <div class="status-line">
+                <span id="statusLeft"></span>
+                <span>Delete: remove · Arrows: nudge · Ctrl+D: duplicate · Esc: deselect</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    'use strict';
+
+    // =====================================================================
+    // Utilities
+    // =====================================================================
+    const $ = id => document.getElementById(id);
+    const TAU = Math.PI * 2;
+    const mod = (a, n) => ((a % n) + n) % n;
+    const clamp = (v, lo = 0, hi = 1) => v < lo ? lo : v > hi ? hi : v;
+    const fract = x => x - Math.floor(x);
+
+    function mulberry32(seed) {
+        let a = seed >>> 0;
+        return function () {
+            a = (a + 0x6D2B79F5) >>> 0;
+            let t = a;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+    function hash2(x, y, seed) {
+        let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(seed | 0, 2147483647);
+        h = Math.imul(h ^ (h >>> 13), 1274126177);
+        h ^= h >>> 16;
+        return (h >>> 0) / 4294967296;
+    }
+    const randSeed = () => Math.floor(Math.random() * 100000);
+
+    function hexToRgb(hex) {
+        const n = parseInt(hex.slice(1), 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+
+    // =====================================================================
+    // Shapes (unit shapes with radius 1, centred on 0,0)
+    // =====================================================================
+    function polygon(points) {
+        const p = new Path2D();
+        points.forEach(([x, y], i) => i ? p.lineTo(x, y) : p.moveTo(x, y));
+        p.closePath();
+        return p;
+    }
+    function regular(n, r = 1, offset = -Math.PI / 2) {
+        const pts = [];
+        for (let i = 0; i < n; i++) {
+            const a = offset + i * TAU / n;
+            pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+        }
+        return pts;
+    }
+    const SHAPES = {
+        circle: { name: 'Circle', path: (() => { const p = new Path2D(); p.arc(0, 0, 1, 0, TAU); return p; })() },
+        square: { name: 'Square', path: (() => { const p = new Path2D(); p.rect(-1, -1, 2, 2); return p; })() },
+        triangle: { name: 'Triangle', path: (() => {
+            const pts = regular(3);
+            return polygon(pts.map(([x, y]) => [x, y + 0.25]));
+        })() },
+        diamond: { name: 'Diamond', path: polygon([[0, -1], [0.7, 0], [0, 1], [-0.7, 0]]) },
+        hexagon: { name: 'Hexagon', path: polygon(regular(6, 1, 0)) },
+        star: { name: 'Star', path: (() => {
+            const pts = [];
+            for (let i = 0; i < 10; i++) {
+                const a = -Math.PI / 2 + i * Math.PI / 5;
+                const r = i % 2 ? 0.42 : 1;
+                pts.push([Math.cos(a) * r, Math.sin(a) * r + 0.08]);
+            }
+            return polygon(pts);
+        })() },
+        heart: { name: 'Heart', path: (() => {
+            const p = new Path2D();
+            p.moveTo(0, 0.95);
+            p.bezierCurveTo(-0.55, 0.55, -1.05, 0.15, -1.0, -0.38);
+            p.bezierCurveTo(-0.95, -0.95, -0.2, -1.05, 0, -0.5);
+            p.bezierCurveTo(0.2, -1.05, 0.95, -0.95, 1.0, -0.38);
+            p.bezierCurveTo(1.05, 0.15, 0.55, 0.55, 0, 0.95);
+            p.closePath();
+            return p;
+        })() },
+        cross: { name: 'Cross', path: (() => {
+            const t = 0.34;
+            return polygon([[-t, -1], [t, -1], [t, -t], [1, -t], [1, t], [t, t], [t, 1], [-t, 1], [-t, t], [-1, t], [-1, -t], [-t, -t]]);
+        })() },
+        ring: { name: 'Ring', path: (() => {
+            const p = new Path2D();
+            p.arc(0, 0, 1, 0, TAU);
+            p.moveTo(0.6, 0);
+            p.arc(0, 0, 0.6, 0, TAU, true);
+            return p;
+        })() },
+        line: { name: 'Line', path: (() => { const p = new Path2D(); p.rect(-1, -0.1, 2, 0.2); return p; })() },
+        leaf: { name: 'Leaf', path: (() => {
+            const p = new Path2D();
+            p.moveTo(0, -1);
+            p.quadraticCurveTo(0.95, 0, 0, 1);
+            p.quadraticCurveTo(-0.95, 0, 0, -1);
+            p.closePath();
+            return p;
+        })() },
+        moon: { name: 'Moon', path: (() => {
+            // Crescent: outer unit circle minus a circle of r=0.85 at (0.45, 0)
+            const p = new Path2D();
+            const ox = 0.15; // shift so the crescent is roughly centred
+            const t = Math.atan2(0.846, 0.533), f = Math.atan2(0.846, 0.083);
+            p.arc(ox, 0, 1, t, -t, false);
+            p.arc(ox + 0.45, 0, 0.85, -f, f, true);
+            p.closePath();
+            return p;
+        })() }
+    };
+
+    // =====================================================================
+    // Math pattern generators (all periodic on the unit tile)
+    // =====================================================================
+    const P = (k, l, min, max, step, def) => ({ k, l, min, max, step, def, type: 'range' });
+    const SEED = (def = 1) => ({ k: 'seed', l: 'Seed', def, type: 'seed' });
+    const tri = x => 1 - 2 * Math.abs(fract(x) - 0.5);    // triangle wave 0..1, period 1
+    const wave = phase => 0.5 - 0.5 * Math.cos(TAU * phase);
+
+    // Periodic gradient noise
+    function makeNoise(seed) {
+        const rnd = mulberry32(seed * 9973 + 17);
+        const perm = new Uint16Array(512);
+        const base = Array.from({ length: 256 }, (_, i) => i);
+        for (let i = 255; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [base[i], base[j]] = [base[j], base[i]]; }
+        for (let i = 0; i < 512; i++) perm[i] = base[i & 255];
+        const gx = new Float32Array(256), gy = new Float32Array(256);
+        for (let i = 0; i < 256; i++) { const a = rnd() * TAU; gx[i] = Math.cos(a); gy[i] = Math.sin(a); }
+        const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+        function grad(ix, iy, period, dx, dy) {
+            const h = perm[perm[mod(ix, period) & 255] + (mod(iy, period) & 255)];
+            return gx[h] * dx + gy[h] * dy;
+        }
+        // x, y in lattice units; period = lattice cells per tile
+        function noise(x, y, period) {
+            const x0 = Math.floor(x), y0 = Math.floor(y);
+            const fx = x - x0, fy = y - y0;
+            const n00 = grad(x0, y0, period, fx, fy);
+            const n10 = grad(x0 + 1, y0, period, fx - 1, fy);
+            const n01 = grad(x0, y0 + 1, period, fx, fy - 1);
+            const n11 = grad(x0 + 1, y0 + 1, period, fx - 1, fy - 1);
+            const u = fade(fx), v = fade(fy);
+            return (n00 + u * (n10 - n00)) + v * ((n01 + u * (n11 - n01)) - (n00 + u * (n10 - n00)));
+        }
+        return function fbm(u, v, scale, octaves) {
+            let sum = 0, amp = 1, norm = 0, s = scale;
+            for (let o = 0; o < octaves; o++) {
+                sum += amp * noise(u * s, v * s, s);
+                norm += amp;
+                amp *= 0.5;
+                s *= 2;
+            }
+            return sum / norm; // roughly -0.7..0.7
+        };
+    }
+
+    const GENS = {
+        none: { name: 'None', params: [], level: 0.5, make: () => () => 0 },
+        stripes: {
+            name: 'Stripes', level: 0.5,
+            params: [P('count', 'Count', 1, 40, 1, 8), P('slant', 'Slant', -6, 6, 1, 0)],
+            make: p => (u, v) => wave(p.count * v + p.slant * u)
+        },
+        waves: {
+            name: 'Waves', level: 0.5,
+            params: [P('count', 'Lines', 1, 30, 1, 8), P('freq', 'Wave frequency', 1, 10, 1, 2), P('amp', 'Wave height', 0, 2, 0.05, 0.5)],
+            make: p => (u, v) => wave(p.count * v + p.amp * Math.sin(TAU * p.freq * u))
+        },
+        chevron: {
+            name: 'Chevron / Zigzag', level: 0.5,
+            params: [P('count', 'Lines', 1, 30, 1, 8), P('freq', 'Zigzags', 1, 12, 1, 4), P('amp', 'Zigzag height', 0, 2, 0.05, 0.6)],
+            make: p => (u, v) => wave(p.count * v + p.amp * tri(p.freq * u))
+        },
+        checker: {
+            name: 'Checkerboard', level: 0.5,
+            params: [P('cells', 'Cells', 1, 32, 1, 8)],
+            make: p => (u, v) => 0.5 + 0.5 * Math.sin(Math.PI * p.cells * u) * Math.sin(Math.PI * p.cells * v)
+        },
+        dots: {
+            name: 'Polka dots', level: 0.55,
+            params: [P('cells', 'Cells', 1, 32, 1, 6), { k: 'stagger', l: 'Staggered rows', def: true, type: 'bool' }],
+            make: p => {
+                let n = p.cells;
+                if (p.stagger && n % 2) n += 1; // even rows keep the stagger seamless
+                return (u, v) => {
+                    const x = u * n, y = v * n;
+                    let best = 9;
+                    const cy = Math.floor(y);
+                    for (let r = cy - 1; r <= cy + 1; r++) {
+                        const off = p.stagger ? mod(r, 2) * 0.5 : 0;
+                        const cxBase = Math.floor(x - off);
+                        for (let c = cxBase - 1; c <= cxBase + 1; c++) {
+                            const dx = x - (c + 0.5 + off), dy = y - (r + 0.5);
+                            const d = dx * dx + dy * dy;
+                            if (d < best) best = d;
+                        }
+                    }
+                    return clamp(1 - Math.sqrt(best) / 0.7071);
+                };
+            }
+        },
+        grid: {
+            name: 'Grid lines', level: 0.9,
+            params: [P('cells', 'Cells', 1, 32, 1, 8), { k: 'diag', l: 'Diagonal grid', def: false, type: 'bool' }],
+            make: p => (u, v) => {
+                let a = u, b = v;
+                if (p.diag) { a = u + v; b = u - v; }
+                const da = Math.abs(fract(a * p.cells) - 0.5), db = Math.abs(fract(b * p.cells) - 0.5);
+                return Math.max(da, db) * 2;
+            }
+        },
+        interference: {
+            name: 'Interference waves', level: 0.5,
+            params: [P('waves', 'Waves', 2, 10, 1, 4), P('freq', 'Max frequency', 1, 12, 1, 4), SEED(7)],
+            make: p => {
+                const rnd = mulberry32(p.seed * 31 + 5);
+                const ws = [];
+                for (let i = 0; i < p.waves; i++) {
+                    let a = 0, b = 0;
+                    while (a === 0 && b === 0) {
+                        a = Math.round((rnd() * 2 - 1) * p.freq);
+                        b = Math.round((rnd() * 2 - 1) * p.freq);
+                    }
+                    ws.push([a, b, rnd() * TAU]);
+                }
+                const norm = 1 / Math.sqrt(p.waves);
+                return (u, v) => {
+                    let s = 0;
+                    for (const [a, b, ph] of ws) s += Math.cos(TAU * (a * u + b * v) + ph);
+                    return clamp(0.5 + 0.5 * s * norm);
+                };
+            }
+        },
+        noise: {
+            name: 'Organic noise', level: 0.5,
+            params: [P('scale', 'Scale', 1, 16, 1, 4), P('octaves', 'Detail', 1, 6, 1, 3), SEED(3)],
+            make: p => {
+                const fbm = makeNoise(p.seed);
+                return (u, v) => clamp(0.5 + fbm(u, v, p.scale, p.octaves) * 0.9);
+            }
+        },
+        marble: {
+            name: 'Marble', level: 0.5,
+            params: [P('count', 'Veins', 1, 20, 1, 4), P('turb', 'Turbulence', 0, 4, 0.05, 1.2), P('scale', 'Noise scale', 1, 8, 1, 3), SEED(11)],
+            make: p => {
+                const fbm = makeNoise(p.seed);
+                return (u, v) => wave(p.count * (u + v) / 2 + p.turb * fbm(u, v, p.scale, 4));
+            }
+        },
+        voronoi: {
+            name: 'Voronoi cells', level: 0.88,
+            params: [P('points', 'Cells', 2, 80, 1, 18),
+                { k: 'style', l: 'Style', def: 'edges', type: 'select', options: [['edges', 'Cell borders'], ['dist', 'Bubbles'], ['fill', 'Random fill']] },
+                SEED(5)],
+            make: p => {
+                const rnd = mulberry32(p.seed * 131 + 1);
+                const n = p.points;
+                const px = new Float32Array(n), py = new Float32Array(n), tone = new Float32Array(n);
+                for (let i = 0; i < n; i++) { px[i] = rnd(); py[i] = rnd(); tone[i] = rnd(); }
+                const spacing = 1 / Math.sqrt(n);
+                return (u, v) => {
+                    let f1 = 9, f2 = 9, id = 0;
+                    for (let i = 0; i < n; i++) {
+                        let dx = Math.abs(u - px[i]); if (dx > 0.5) dx = 1 - dx;
+                        let dy = Math.abs(v - py[i]); if (dy > 0.5) dy = 1 - dy;
+                        const d = dx * dx + dy * dy;
+                        if (d < f1) { f2 = f1; f1 = d; id = i; } else if (d < f2) f2 = d;
+                    }
+                    f1 = Math.sqrt(f1); f2 = Math.sqrt(f2);
+                    if (p.style === 'dist') return clamp(1 - f1 / (spacing * 0.75));
+                    if (p.style === 'fill') return tone[id];
+                    return clamp(1 - (f2 - f1) / (spacing * 0.5));
+                };
+            }
+        },
+        truchet: {
+            name: 'Truchet arcs', level: 0.84,
+            params: [P('cells', 'Cells', 2, 32, 1, 8), SEED(2)],
+            make: p => (u, v) => {
+                const x = u * p.cells, y = v * p.cells;
+                const cx = Math.floor(x), cy = Math.floor(y);
+                const fx = x - cx, fy = y - cy;
+                const flip = hash2(cx, cy, p.seed) < 0.5;
+                let d1, d2;
+                if (flip) {
+                    d1 = Math.hypot(fx, fy); d2 = Math.hypot(fx - 1, fy - 1);
+                } else {
+                    d1 = Math.hypot(fx - 1, fy); d2 = Math.hypot(fx, fy - 1);
+                }
+                const d = Math.min(Math.abs(d1 - 0.5), Math.abs(d2 - 0.5));
+                return clamp(1 - d * 2);
+            }
+        },
+        diamonds: {
+            name: 'Diamonds / Argyle', level: 0.5,
+            params: [P('cells', 'Cells', 1, 24, 1, 6)],
+            make: p => (u, v) => {
+                const a = Math.abs(fract(u * p.cells) - 0.5) + Math.abs(fract(v * p.cells) - 0.5);
+                return 1 - a;
+            }
+        }
+    };
+
+    // =====================================================================
+    // Gradient presets (start = paper side, end = ink side)
+    // =====================================================================
+    const PRESETS = [
+        ['Sunset', '#ffd166', '#e0457b', '#1a1033'],
+        ['Ocean', '#caf0f8', '#0096c7', '#03045e'],
+        ['Forest', '#d8f3dc', '#40916c', '#081c15'],
+        ['Neon', '#00f5d4', '#7b2cbf', '#10002b'],
+        ['Ember', '#ffba08', '#9d0208', '#03071e'],
+        ['Pastel', '#fdf0f5', '#a2d2ff', '#7a5fa8'],
+        ['Sepia', '#f4ecd8', '#a67c52', '#2b1d10'],
+        ['Mint & Coral', '#e9fff9', '#2ec4b6', '#ff6b6b'],
+        ['Gold', '#fff8e1', '#d4a017', '#3b2a00']
+    ];
+
+    // =====================================================================
+    // State
+    // =====================================================================
+    const state = {
+        elements: [],
+        selectedId: null,
+        nextId: 1,
+        images: {},          // id -> { name, src, w, h, gray, ink, sil, thumb }
+        nextImageId: 1,
+        math: { type: 'none', params: {}, edge: 'hard', level: 0.5, opacity: 1, invert: false },
+        color: {
+            mode: 'bw', bwInvert: false, bwThreshold: false,
+            stops: ['#ffd166', '#e0457b', '#1a1033'], useMid: true,
+            style: 'tone', sweepDir: 'h', sweepCycles: 1, paper: '#ffffff', gradInvert: false
+        },
+        view: { mode: 'single', tiles: 4, dim: true, seams: false },
+        previewSize: 512
+    };
+
+    const tileCanvas = document.createElement('canvas');
+    const viewCanvas = $('viewCanvas');
+    const vctx = viewCanvas.getContext('2d');
+
+    // =====================================================================
+    // History (undo / redo of elements)
+    // =====================================================================
+    const undoStack = [], redoStack = [];
+    function snapshot() { return JSON.stringify(state.elements); }
+    function pushHistory() {
+        undoStack.push(snapshot());
+        if (undoStack.length > 150) undoStack.shift();
+        redoStack.length = 0;
+        updateHistoryButtons();
+    }
+    function restore(json) {
+        state.elements = JSON.parse(json);
+        if (!getSelected()) state.selectedId = null;
+        refreshSelectionPanel();
+        requestRender();
+    }
+    function undo() {
+        if (!undoStack.length) return;
+        redoStack.push(snapshot());
+        restore(undoStack.pop());
+        updateHistoryButtons();
+    }
+    function redo() {
+        if (!redoStack.length) return;
+        undoStack.push(snapshot());
+        restore(redoStack.pop());
+        updateHistoryButtons();
+    }
+    function updateHistoryButtons() {
+        $('undoBtn').disabled = !undoStack.length;
+        $('redoBtn').disabled = !redoStack.length;
+    }
+
+    // =====================================================================
+    // Elements
+    // =====================================================================
+    function makeElement(kind, opts = {}) {
+        return Object.assign({
+            id: state.nextId++,
+            kind,               // shape key or 'image'
+            imageId: null,
+            x: 0.5, y: 0.5,
+            size: 0.25,
+            stretch: 1,
+            rotation: 0,
+            tone: 1,
+            style: 'fill',
+            stroke: 0.15,
+            imgMode: 'ink'
+        }, opts);
+    }
+    const getSelected = () => state.elements.find(e => e.id === state.selectedId) || null;
+
+    // Half extents of an element as fractions of the tile
+    function halfExtents(el) {
+        const r = el.size / 2;
+        if (el.kind === 'image') {
+            const img = state.images[el.imageId];
+            const aspect = img ? img.w / img.h : 1;
+            let hw = r, hh = r;
+            if (aspect >= 1) hh = r / aspect; else hw = r * aspect;
+            return [hw * el.stretch, hh];
+        }
+        return [r * el.stretch, r];
+    }
+
+    function drawElementAt(ctx, el, cx, cy, S) {
+        const [hw, hh] = halfExtents(el);
+        const pw = hw * S, ph = hh * S;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(el.rotation * Math.PI / 180);
+        if (el.kind === 'image') {
+            const img = state.images[el.imageId];
+            if (img) {
+                const src = img[el.imgMode] || img.gray;
+                ctx.globalAlpha = el.tone;
+                ctx.drawImage(src, -pw, -ph, pw * 2, ph * 2);
+            }
+        } else {
+            const shape = SHAPES[el.kind];
+            const g = Math.round(255 * (1 - el.tone));
+            const col = `rgb(${g},${g},${g})`;
+            ctx.scale(pw, ph);
+            if (el.style === 'stroke') {
+                ctx.strokeStyle = col;
+                ctx.lineWidth = el.stroke;
+                ctx.lineJoin = 'round';
+                ctx.stroke(shape.path);
+            } else {
+                ctx.fillStyle = col;
+                ctx.fill(shape.path, 'evenodd');
+            }
+        }
+        ctx.restore();
+    }
+
+    // Draw an element plus its wrapped copies so it tiles seamlessly
+    function drawElementWrapped(ctx, el, S) {
+        const [hw, hh] = halfExtents(el);
+        const R = Math.hypot(hw, hh) * S * (el.style === 'stroke' ? 1 + el.stroke : 1) + 2;
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const cx = (el.x + dx) * S, cy = (el.y + dy) * S;
+                if (cx + R < 0 || cx - R > S || cy + R < 0 || cy - R > S) continue;
+                drawElementAt(ctx, el, cx, cy, S);
+            }
+        }
+    }
+
+    function hitTest(u, v) {
+        const pu = mod(u, 1), pv = mod(v, 1);
+        for (let i = state.elements.length - 1; i >= 0; i--) {
+            const el = state.elements[i];
+            const [hw, hh] = halfExtents(el);
+            const a = -el.rotation * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+            const pad = 0.004;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                const lx0 = pu - (el.x + dx), ly0 = pv - (el.y + dy);
+                const lx = lx0 * c - ly0 * s, ly = lx0 * s + ly0 * c;
+                if (Math.abs(lx) <= hw + pad && Math.abs(ly) <= hh + pad) return el;
+            }
+        }
+        return null;
+    }
+
+    // =====================================================================
+    // Math layer (cached)
+    // =====================================================================
+    const mathCache = { key: null, canvas: document.createElement('canvas') };
+    function mathKey(S) {
+        const m = state.math;
+        return JSON.stringify([m.type, m.params, m.edge, m.level, m.invert, S]);
+    }
+    function getMathLayer(S) {
+        const key = mathKey(S);
+        if (mathCache.key === key) return mathCache.canvas;
+        const m = state.math;
+        const f = GENS[m.type].make(m.params);
+        const field = new Float32Array(S * S);
+        for (let y = 0; y < S; y++) {
+            const v = (y + 0.5) / S;
+            for (let x = 0; x < S; x++) field[y * S + x] = f((x + 0.5) / S, v);
+        }
+        const c = mathCache.canvas;
+        c.width = S; c.height = S;
+        const cctx = c.getContext('2d');
+        const img = cctx.createImageData(S, S);
+        const d = img.data;
+        for (let y = 0; y < S; y++) {
+            const yn = ((y + 1) % S) * S;
+            for (let x = 0; x < S; x++) {
+                const i = y * S + x;
+                const val = field[i];
+                let ink;
+                if (m.edge === 'hard') {
+                    // Anti-aliased threshold using the local (wrapped) gradient
+                    const g = Math.abs(field[y * S + (x + 1) % S] - val) + Math.abs(field[yn + x] - val);
+                    ink = clamp((val - m.level) / Math.max(g, 1e-4) + 0.5);
+                } else {
+                    ink = val;
+                }
+                if (m.invert) ink = 1 - ink;
+                d[i * 4 + 3] = Math.round(ink * 255);
+            }
+        }
+        cctx.putImageData(img, 0, 0);
+        mathCache.key = key;
+        return c;
+    }
+
+    // =====================================================================
+    // Colour pass
+    // =====================================================================
+    function buildLUT() {
+        const c = state.color;
+        const stops = c.useMid ? c.stops.map(hexToRgb) : [hexToRgb(c.stops[0]), hexToRgb(c.stops[2])];
+        if (c.gradInvert) stops.reverse();
+        const lut = new Uint8ClampedArray(256 * 3);
+        const segs = stops.length - 1;
+        for (let i = 0; i < 256; i++) {
+            const t = i / 255 * segs;
+            const s = Math.min(Math.floor(t), segs - 1);
+            const f = t - s;
+            for (let k = 0; k < 3; k++) lut[i * 3 + k] = stops[s][k] + (stops[s + 1][k] - stops[s][k]) * f;
+        }
+        return lut;
+    }
+
+    function colorPass(ctx, S) {
+        const c = state.color;
+        if (c.mode === 'bw' && !c.bwInvert && !c.bwThreshold) return; // already black on white
+        const img = ctx.getImageData(0, 0, S, S);
+        const d = img.data;
+        const n = S * S;
+        if (c.mode === 'bw') {
+            for (let i = 0; i < n; i++) {
+                const j = i * 4;
+                let v = d[j];
+                if (c.bwThreshold) v = v < 128 ? 0 : 255;
+                if (c.bwInvert) v = 255 - v;
+                d[j] = d[j + 1] = d[j + 2] = v;
+            }
+        } else if (c.style === 'tone') {
+            const lut = buildLUT();
+            for (let i = 0; i < n; i++) {
+                const j = i * 4, k = (255 - d[j]) * 3;
+                d[j] = lut[k]; d[j + 1] = lut[k + 1]; d[j + 2] = lut[k + 2];
+            }
+        } else {
+            const lut = buildLUT();
+            const paper = hexToRgb(c.paper);
+            const cyc = c.sweepCycles;
+            // position -> gradient index (periodic over the tile)
+            const lin = new Uint8Array(S);
+            for (let i = 0; i < S; i++) lin[i] = Math.round(255 * (0.5 - 0.5 * Math.cos(TAU * cyc * (i + 0.5) / S)));
+            for (let y = 0; y < S; y++) {
+                for (let x = 0; x < S; x++) {
+                    const i = y * S + x, j = i * 4;
+                    const a = (255 - d[j]) / 255;
+                    if (a <= 0) { d[j] = paper[0]; d[j + 1] = paper[1]; d[j + 2] = paper[2]; continue; }
+                    let t;
+                    switch (c.sweepDir) {
+                        case 'h': t = lin[x]; break;
+                        case 'v': t = lin[y]; break;
+                        case 'd': t = lin[(x + y) % S]; break;
+                        default: {
+                            const dx = (x + 0.5) / S - 0.5, dy = (y + 0.5) / S - 0.5;
+                            const r = cyc * Math.sqrt(dx * dx + dy * dy) / 0.7072;
+                            const m2 = r % 2;
+                            t = Math.round(255 * (m2 < 1 ? m2 : 2 - m2));
+                        }
+                    }
+                    const k = t * 3;
+                    d[j] = paper[0] + (lut[k] - paper[0]) * a;
+                    d[j + 1] = paper[1] + (lut[k + 1] - paper[1]) * a;
+                    d[j + 2] = paper[2] + (lut[k + 2] - paper[2]) * a;
+                }
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+    }
+
+    // =====================================================================
+    // Tile rendering
+    // =====================================================================
+    function renderTile(canvas, S) {
+        if (canvas.width !== S) { canvas.width = S; canvas.height = S; }
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, S, S);
+        const m = state.math;
+        if (m.type !== 'none' && m.opacity > 0) {
+            ctx.globalAlpha = m.opacity;
+            ctx.drawImage(getMathLayer(S), 0, 0);
+            ctx.globalAlpha = 1;
+        }
+        for (const el of state.elements) drawElementWrapped(ctx, el, S);
+        colorPass(ctx, S);
+        return canvas;
+    }
+
+    // =====================================================================
+    // View rendering
+    // =====================================================================
+    let viewMap = null;
+    let renderPending = false, viewPending = false;
+    function requestRender() {
+        renderPending = true;
+        schedule();
+    }
+    function requestView() {
+        viewPending = true;
+        schedule();
+    }
+    let rafId = null;
+    function schedule() {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+            rafId = null;
+            if (renderPending) { renderTile(tileCanvas, state.previewSize); renderPending = false; viewPending = true; }
+            if (viewPending) { drawView(); viewPending = false; }
+        });
+    }
+
+    function resizeView() {
+        const dpr = window.devicePixelRatio || 1;
+        const r = viewCanvas.getBoundingClientRect();
+        const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+        if (viewCanvas.width !== w || viewCanvas.height !== h) {
+            viewCanvas.width = w; viewCanvas.height = h;
+            requestView();
+        }
+    }
+
+    function drawSelectionBox(ctx, el, ox, oy, cell) {
+        const [hw, hh] = halfExtents(el);
+        ctx.save();
+        ctx.translate(ox + el.x * cell, oy + el.y * cell);
+        ctx.rotate(el.rotation * Math.PI / 180);
+        const w = hw * cell, h = hh * cell;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+        ctx.strokeRect(-w, -h, w * 2, h * 2);
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = '#4da3ff';
+        ctx.strokeRect(-w, -h, w * 2, h * 2);
+        ctx.restore();
+    }
+
+    function drawView() {
+        const W = viewCanvas.width, H = viewCanvas.height;
+        const dpr = window.devicePixelRatio || 1;
+        const ctx = vctx;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(0, 0, W, H);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        const sel = getSelected();
+
+        if (state.view.mode === 'single') {
+            const pad = 16 * dpr;
+            const cell = Math.floor((Math.min(W, H) - pad * 2) / 3);
+            const ox = Math.floor((W - cell * 3) / 2), oy = Math.floor((H - cell * 3) / 2);
+            viewMap = { mode: 'single', ox, oy, cell, dpr };
+            for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) {
+                ctx.drawImage(tileCanvas, ox + i * cell, oy + j * cell, cell, cell);
+            }
+            if (state.view.dim) {
+                ctx.fillStyle = 'rgba(9,9,11,0.55)';
+                ctx.fillRect(ox, oy, cell * 3, cell);
+                ctx.fillRect(ox, oy + cell * 2, cell * 3, cell);
+                ctx.fillRect(ox, oy + cell, cell, cell);
+                ctx.fillRect(ox + cell * 2, oy + cell, cell, cell);
+            }
+            // thin separators between wrap tiles
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([]);
+            for (let k = 0; k <= 3; k++) {
+                ctx.beginPath(); ctx.moveTo(ox + k * cell + 0.5, oy); ctx.lineTo(ox + k * cell + 0.5, oy + cell * 3); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(ox, oy + k * cell + 0.5); ctx.lineTo(ox + cell * 3, oy + k * cell + 0.5); ctx.stroke();
+            }
+            // live tile border
+            ctx.lineWidth = 2 * dpr;
+            ctx.strokeStyle = '#0071e3';
+            ctx.strokeRect(ox + cell, oy + cell, cell, cell);
+            ctx.font = `${11 * dpr}px -apple-system, sans-serif`;
+            ctx.fillStyle = '#0071e3';
+            ctx.fillRect(ox + cell, oy + cell - 18 * dpr, 64 * dpr, 18 * dpr);
+            ctx.fillStyle = '#fff';
+            ctx.fillText('LIVE TILE', ox + cell + 6 * dpr, oy + cell - 5 * dpr);
+
+            if (sel) {
+                ctx.save();
+                ctx.beginPath(); ctx.rect(ox, oy, cell * 3, cell * 3); ctx.clip();
+                for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) {
+                    drawSelectionBox(ctx, sel, ox + i * cell, oy + j * cell, cell);
+                }
+                ctx.restore();
+            }
+        } else {
+            const n = state.view.tiles;
+            const cell = W / n;
+            viewMap = { mode: 'tiled', ox: 0, oy: 0, cell, dpr };
+            const rows = Math.ceil(H / cell);
+            for (let j = 0; j < rows; j++) for (let i = 0; i < n; i++) {
+                // Pixel-snapped destination avoids hairline gaps between tiles
+                const x0 = Math.round(i * cell), y0 = Math.round(j * cell);
+                const x1 = Math.round((i + 1) * cell), y1 = Math.round((j + 1) * cell);
+                ctx.drawImage(tileCanvas, x0, y0, x1 - x0, y1 - y0);
+            }
+            if (state.view.seams) {
+                ctx.strokeStyle = 'rgba(255,60,60,0.7)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                for (let i = 1; i < n; i++) { const x = Math.round(i * cell) + 0.5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+                for (let j = 1; j <= rows; j++) { const y = Math.round(j * cell) + 0.5; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+                ctx.setLineDash([]);
+            }
+            if (sel) {
+                for (let j = -1; j <= rows; j++) for (let i = -1; i <= n; i++) {
+                    drawSelectionBox(ctx, sel, i * cell, j * cell, cell);
+                }
+            }
+        }
+        $('statusLeft').textContent =
+            `${state.elements.length} element${state.elements.length === 1 ? '' : 's'} · ` +
+            `${GENS[state.math.type].name === 'None' ? 'no generator' : GENS[state.math.type].name} · ` +
+            `${state.color.mode === 'bw' ? 'Black & White' : 'Gradient'}`;
+        $('elementCount').textContent = state.elements.length;
+    }
+
+    // =====================================================================
+    // Pointer interaction
+    // =====================================================================
+    function eventToTile(e) {
+        if (!viewMap) return null;
+        const r = viewCanvas.getBoundingClientRect();
+        const px = (e.clientX - r.left) * viewMap.dpr, py = (e.clientY - r.top) * viewMap.dpr;
+        if (viewMap.mode === 'single') {
+            const u = (px - viewMap.ox) / viewMap.cell - 1, v = (py - viewMap.oy) / viewMap.cell - 1;
+            if (u < -1 || u > 2 || v < -1 || v > 2) return null;
+            return { u, v };
+        }
+        return { u: px / viewMap.cell, v: py / viewMap.cell };
+    }
+
+    let drag = null;
+    viewCanvas.addEventListener('pointerdown', e => {
+        const p = eventToTile(e);
+        if (!p) { select(null); return; }
+        const hit = hitTest(p.u, p.v);
+        if (!hit) { select(null); return; }
+        select(hit.id);
+        pushHistory();
+        drag = { u0: p.u, v0: p.v, x0: hit.x, y0: hit.y, el: hit, moved: false };
+        viewCanvas.setPointerCapture(e.pointerId);
+        viewCanvas.style.cursor = 'grabbing';
+    });
+    viewCanvas.addEventListener('pointermove', e => {
+        const p = eventToTile(e);
+        if (drag) {
+            if (!p) return;
+            drag.el.x = mod(drag.x0 + (p.u - drag.u0), 1);
+            drag.el.y = mod(drag.y0 + (p.v - drag.v0), 1);
+            drag.moved = true;
+            syncSelectionInputs();
+            requestRender();
+            return;
+        }
+        viewCanvas.style.cursor = p && hitTest(p.u, p.v) ? 'grab' : 'default';
+    });
+    function endDrag(e) {
+        if (!drag) return;
+        if (!drag.moved) undoStack.pop(), updateHistoryButtons(); // clicks shouldn't create undo entries
+        drag = null;
+        viewCanvas.style.cursor = 'grab';
+        try { viewCanvas.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    viewCanvas.addEventListener('pointerup', endDrag);
+    viewCanvas.addEventListener('pointercancel', endDrag);
+
+    let wheelTimer = null;
+    viewCanvas.addEventListener('wheel', e => {
+        const p = eventToTile(e);
+        const sel = getSelected();
+        if (sel && p && hitTest(p.u, p.v) === sel) {
+            e.preventDefault();
+            if (!wheelTimer) pushHistory();
+            clearTimeout(wheelTimer);
+            wheelTimer = setTimeout(() => { wheelTimer = null; }, 400);
+            if (e.shiftKey) {
+                sel.rotation = mod(sel.rotation + (e.deltaY > 0 ? 5 : -5), 360);
+            } else {
+                sel.size = clamp(sel.size * (1 - Math.sign(e.deltaY) * 0.06), 0.01, 1.2);
+            }
+            syncSelectionInputs();
+            requestRender();
+        } else if (state.view.mode === 'tiled') {
+            e.preventDefault();
+            setTiles(state.view.tiles + (e.deltaY > 0 ? 1 : -1));
+        }
+    }, { passive: false });
+
+    // =====================================================================
+    // Selection panel
+    // =====================================================================
+    function select(id) {
+        state.selectedId = id;
+        refreshSelectionPanel();
+        requestView();
+    }
+    const PROP_FORMAT = {
+        x: v => (v * 100).toFixed(1) + '%',
+        y: v => (v * 100).toFixed(1) + '%',
+        size: v => Math.round(v * 100) + '%',
+        stretch: v => Math.round(v * 100) + '%',
+        rotation: v => Math.round(v) + '°',
+        tone: v => Math.round(v * 100) + '%',
+        stroke: v => Math.round(v * 100) + '%'
+    };
+    function syncSelectionInputs() {
+        const el = getSelected();
+        if (!el) return;
+        document.querySelectorAll('#selectionPanel [data-prop]').forEach(inp => {
+            const k = inp.dataset.prop;
+            if (document.activeElement !== inp || inp.tagName === 'SELECT') inp.value = el[k];
+            const label = $('prop' + k[0].toUpperCase() + k.slice(1) + 'Val');
+            if (label && PROP_FORMAT[k]) label.textContent = PROP_FORMAT[k](el[k]);
+        });
+        $('strokeField').classList.toggle('disabled', el.style !== 'stroke');
+    }
+    function refreshSelectionPanel() {
+        const el = getSelected();
+        const panel = $('selectionPanel');
+        if (!el) { panel.classList.add('hidden'); return; }
+        panel.classList.remove('hidden');
+        const isImg = el.kind === 'image';
+        $('selTitle').textContent = isImg ? `Image: ${(state.images[el.imageId] || {}).name || ''}` : SHAPES[el.kind].name;
+        $('shapeOnlyProps').classList.toggle('hidden', isImg);
+        $('imageOnlyProps').classList.toggle('hidden', !isImg);
+        syncSelectionInputs();
+    }
+    let propEditing = false;
+    document.querySelectorAll('#selectionPanel [data-prop]').forEach(inp => {
+        inp.addEventListener('input', () => {
+            const el = getSelected();
+            if (!el) return;
+            if (!propEditing) { pushHistory(); propEditing = true; }
+            const k = inp.dataset.prop;
+            el[k] = inp.tagName === 'SELECT' ? inp.value : parseFloat(inp.value);
+            syncSelectionInputs();
+            requestRender();
+        });
+        inp.addEventListener('change', () => {
+            propEditing = false;
+            if (inp.tagName === 'SELECT') { const el = getSelected(); if (el) el[inp.dataset.prop] = inp.value; syncSelectionInputs(); requestRender(); }
+        });
+    });
+
+    function duplicateSelected() {
+        const el = getSelected();
+        if (!el) return;
+        pushHistory();
+        const copy = Object.assign({}, el, { id: state.nextId++, x: mod(el.x + 0.06, 1), y: mod(el.y + 0.06, 1) });
+        state.elements.push(copy);
+        select(copy.id);
+        requestRender();
+    }
+    function deleteSelected() {
+        const el = getSelected();
+        if (!el) return;
+        pushHistory();
+        state.elements = state.elements.filter(e => e !== el);
+        select(null);
+        requestRender();
+    }
+    function moveLayer(dir) {
+        const el = getSelected();
+        if (!el) return;
+        const i = state.elements.indexOf(el), j = i + dir;
+        if (j < 0 || j >= state.elements.length) return;
+        pushHistory();
+        [state.elements[i], state.elements[j]] = [state.elements[j], state.elements[i]];
+        requestRender();
+    }
+    $('dupBtn').onclick = duplicateSelected;
+    $('delBtn').onclick = deleteSelected;
+    $('fwdBtn').onclick = () => moveLayer(1);
+    $('backBtn').onclick = () => moveLayer(-1);
+    $('deselectBtn').onclick = () => select(null);
+
+    document.addEventListener('keydown', e => {
+        const tag = (e.target.tagName || '').toLowerCase();
+        const typing = tag === 'input' && !['range', 'checkbox', 'color'].includes(e.target.type) || tag === 'textarea' || tag === 'select';
+        if (typing) return;
+        const cmd = e.ctrlKey || e.metaKey;
+        if (cmd && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+        if (cmd && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+        const el = getSelected();
+        if (!el) return;
+        if (tag === 'input' && e.target.type === 'range') return; // let sliders use arrows
+        if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); }
+        else if (e.key === 'Escape') select(null);
+        else if (cmd && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); }
+        else if (e.key.startsWith('Arrow')) {
+            e.preventDefault();
+            const step = e.shiftKey ? 0.02 : 0.002;
+            pushHistory();
+            if (e.key === 'ArrowLeft') el.x = mod2(el.x - step);
+            if (e.key === 'ArrowRight') el.x = mod2(el.x + step);
+            if (e.key === 'ArrowUp') el.y = mod2(el.y - step);
+            if (e.key === 'ArrowDown') el.y = mod2(el.y + step);
+            syncSelectionInputs();
+            requestRender();
+        }
+    });
+    const mod2 = v => ((v % 1) + 1) % 1;
+
+    // =====================================================================
+    // Tabs
+    // =====================================================================
+    document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x === b));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === b.dataset.tab));
+    }));
+
+    function segmented(id, onChange) {
+        const root = $(id);
+        root.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+            root.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+            onChange(b.dataset.v);
+        }));
+        return v => root.querySelectorAll('button').forEach(x => x.classList.toggle('active', x.dataset.v === v));
+    }
+
+    // =====================================================================
+    // Shape palette & scatter
+    // =====================================================================
+    function shapeIcon(key) {
+        const c = document.createElement('canvas');
+        c.width = c.height = 64;
+        const ctx = c.getContext('2d');
+        ctx.translate(32, 32);
+        ctx.scale(24, 24);
+        ctx.fillStyle = '#e5e5ea';
+        ctx.fill(SHAPES[key].path, 'evenodd');
+        return c;
+    }
+    Object.keys(SHAPES).forEach(key => {
+        const b = document.createElement('button');
+        b.title = SHAPES[key].name;
+        b.appendChild(shapeIcon(key));
+        b.onclick = () => addElement(makeElement(key));
+        $('shapePalette').appendChild(b);
+    });
+
+    function addElement(el) {
+        pushHistory();
+        state.elements.push(el);
+        select(el.id);
+        requestRender();
+    }
+
+    function refreshScatterSource() {
+        const sel = $('scatterSource');
+        const prev = sel.value;
+        sel.innerHTML = '';
+        const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+        add('mix', 'Mixed shapes');
+        Object.keys(SHAPES).forEach(k => add('shape:' + k, SHAPES[k].name));
+        const imgIds = Object.keys(state.images);
+        if (imgIds.length) {
+            add('allimages', 'All imported images');
+            imgIds.forEach(id => add('image:' + id, '🖼 ' + state.images[id].name));
+        }
+        if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+        else sel.value = 'shape:circle';
+    }
+
+    const bindRangeLabel = (id, fmt) => {
+        const upd = () => $(id + 'Val').textContent = fmt($(id).value);
+        $(id).addEventListener('input', upd);
+        upd();
+    };
+    bindRangeLabel('scatterCount', v => v);
+    bindRangeLabel('scatterMin', v => v + '%');
+    bindRangeLabel('scatterMax', v => v + '%');
+
+    $('scatterBtn').onclick = () => {
+        const src = $('scatterSource').value;
+        const layout = $('scatterLayout').value;
+        const styleOpt = $('scatterStyle').value;
+        let count = +$('scatterCount').value;
+        let smin = +$('scatterMin').value / 100, smax = +$('scatterMax').value / 100;
+        if (smin > smax) [smin, smax] = [smax, smin];
+        const rot = $('scatterRotate').checked;
+        const toneVar = $('scatterTone').checked;
+        const avoid = $('scatterAvoid').checked;
+        const rnd = Math.random;
+
+        const shapeKeys = Object.keys(SHAPES);
+        const imgIds = Object.keys(state.images);
+        const pickKind = () => {
+            if (src === 'mix') return { kind: shapeKeys[Math.floor(rnd() * shapeKeys.length)] };
+            if (src === 'allimages') return { kind: 'image', imageId: imgIds[Math.floor(rnd() * imgIds.length)] };
+            if (src.startsWith('image:')) return { kind: 'image', imageId: src.slice(6) };
+            return { kind: src.slice(6) };
+        };
+
+        // positions
+        const positions = [];
+        if (layout === 'random') {
+            for (let i = 0; i < count; i++) {
+                const size = smin + rnd() * (smax - smin);
+                let best = null;
+                for (let t = 0; t < (avoid ? 60 : 1); t++) {
+                    const x = rnd(), y = rnd();
+                    if (!avoid) { best = { x, y, size }; break; }
+                    let ok = true;
+                    for (const p of positions) {
+                        let dx = Math.abs(x - p.x); if (dx > 0.5) dx = 1 - dx;
+                        let dy = Math.abs(y - p.y); if (dy > 0.5) dy = 1 - dy;
+                        if (Math.hypot(dx, dy) < (size + p.size) / 2 * 0.95) { ok = false; break; }
+                    }
+                    if (ok) { best = { x, y, size }; break; }
+                }
+                if (best) positions.push(best);
+            }
+        } else {
+            let n = Math.max(1, Math.round(Math.sqrt(count)));
+            if (layout === 'brick' && n % 2) n += 1; // even rows keep the half-drop seamless
+            for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+                const off = layout === 'brick' && j % 2 ? 0.5 : 0;
+                positions.push({ x: (i + 0.5 + off) / n, y: (j + 0.5) / n, size: smin + rnd() * (smax - smin) });
+            }
+        }
+
+        pushHistory();
+        if ($('scatterClear').checked) state.elements = [];
+        for (const p of positions) {
+            const k = pickKind();
+            const style = styleOpt === 'mixed' ? (rnd() < 0.5 ? 'fill' : 'stroke') : styleOpt;
+            state.elements.push(makeElement(k.kind, {
+                imageId: k.imageId || null,
+                x: mod(p.x, 1), y: mod(p.y, 1), size: p.size,
+                rotation: rot ? Math.floor(rnd() * 360) : 0,
+                tone: toneVar ? 0.25 + rnd() * 0.75 : 1,
+                style
+            }));
+        }
+        select(null);
+        requestRender();
+    };
+
+    $('clearAllBtn').onclick = () => {
+        if (!state.elements.length) return;
+        pushHistory();
+        state.elements = [];
+        select(null);
+        requestRender();
+    };
+
+    // =====================================================================
+    // Images
+    // =====================================================================
+    function loadImageFromSrc(src) {
+        return new Promise((res, rej) => {
+            const img = new Image();
+            img.onload = () => res(img);
+            img.onerror = rej;
+            img.src = src;
+        });
+    }
+    function processImage(img) {
+        const maxDim = 1024;
+        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const make = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+        const base = make();
+        const bctx = base.getContext('2d');
+        bctx.drawImage(img, 0, 0, w, h);
+        const src = bctx.getImageData(0, 0, w, h).data;
+        const out = { w, h, gray: make(), ink: make(), sil: make() };
+        const gD = new ImageData(w, h), iD = new ImageData(w, h), sD = new ImageData(w, h);
+        for (let i = 0; i < w * h; i++) {
+            const j = i * 4;
+            const L = 0.2126 * src[j] + 0.7152 * src[j + 1] + 0.0722 * src[j + 2];
+            const a = src[j + 3];
+            gD.data[j] = gD.data[j + 1] = gD.data[j + 2] = L; gD.data[j + 3] = a;
+            iD.data[j + 3] = (255 - L) * a / 255;   // black ink where dark
+            sD.data[j + 3] = a;                       // black silhouette
+        }
+        out.gray.getContext('2d').putImageData(gD, 0, 0);
+        out.ink.getContext('2d').putImageData(iD, 0, 0);
+        out.sil.getContext('2d').putImageData(sD, 0, 0);
+        return out;
+    }
+    async function addImage(name, src, forcedId) {
+        const img = await loadImageFromSrc(src);
+        const id = forcedId || ('img' + state.nextImageId++);
+        state.images[id] = Object.assign({ name, src }, processImage(img));
+        return id;
+    }
+    function refreshImagePalette() {
+        const pal = $('imagePalette');
+        pal.innerHTML = '';
+        const ids = Object.keys(state.images);
+        $('imageEmpty').classList.toggle('hidden', ids.length > 0);
+        ids.forEach(id => {
+            const im = state.images[id];
+            const b = document.createElement('button');
+            b.title = im.name;
+            const t = document.createElement('img');
+            t.src = im.src;
+            b.appendChild(t);
+            const x = document.createElement('span');
+            x.className = 'remove';
+            x.textContent = '×';
+            x.title = 'Remove image';
+            x.onclick = ev => {
+                ev.stopPropagation();
+                pushHistory();
+                state.elements = state.elements.filter(e => e.imageId !== id);
+                delete state.images[id];
+                if (!getSelected()) state.selectedId = null;
+                refreshImagePalette();
+                refreshScatterSource();
+                refreshSelectionPanel();
+                requestRender();
+            };
+            b.appendChild(x);
+            b.onclick = () => addElement(makeElement('image', { imageId: id, size: 0.4 }));
+            pal.appendChild(b);
+        });
+    }
+    $('imageInput').addEventListener('change', async e => {
+        const files = [...e.target.files];
+        for (const f of files) {
+            const src = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+            try { await addImage(f.name.replace(/\.[^.]+$/, ''), src); }
+            catch (_) { alert('Could not load ' + f.name); }
+        }
+        e.target.value = '';
+        refreshImagePalette();
+        refreshScatterSource();
+    });
+
+    // =====================================================================
+    // Math UI
+    // =====================================================================
+    Object.entries(GENS).forEach(([k, g]) => {
+        const o = document.createElement('option');
+        o.value = k; o.textContent = g.name;
+        $('mathType').appendChild(o);
+    });
+    function setMathType(type, keepParams) {
+        const g = GENS[type];
+        state.math.type = type;
+        if (!keepParams) {
+            state.math.params = {};
+            g.params.forEach(p => state.math.params[p.k] = p.def);
+            state.math.level = g.level;
+        }
+        $('mathType').value = type;
+        buildMathParams();
+        syncMathLook();
+        requestRender();
+    }
+    function buildMathParams() {
+        const root = $('mathParams');
+        root.innerHTML = '';
+        const g = GENS[state.math.type];
+        const params = state.math.params;
+        g.params.forEach(p => {
+            const wrap = document.createElement('div');
+            wrap.className = 'field';
+            if (p.type === 'range') {
+                wrap.innerHTML = `<div class="label-line"><span>${p.l}</span><span class="val"></span></div>`;
+                const inp = document.createElement('input');
+                inp.type = 'range'; inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = params[p.k];
+                const val = wrap.querySelector('.val');
+                const fmt = () => val.textContent = (+inp.value).toFixed(p.step < 1 ? 2 : 0);
+                fmt();
+                inp.addEventListener('input', () => { params[p.k] = +inp.value; fmt(); requestRender(); });
+                wrap.appendChild(inp);
+            } else if (p.type === 'bool') {
+                wrap.innerHTML = `<label class="check"><input type="checkbox"> ${p.l}</label>`;
+                const inp = wrap.querySelector('input');
+                inp.checked = !!params[p.k];
+                inp.addEventListener('change', () => { params[p.k] = inp.checked; requestRender(); });
+            } else if (p.type === 'select') {
+                wrap.innerHTML = `<span>${p.l}</span>`;
+                const s = document.createElement('select');
+                p.options.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; s.appendChild(o); });
+                s.value = params[p.k];
+                s.addEventListener('change', () => { params[p.k] = s.value; requestRender(); });
+                wrap.appendChild(s);
+            } else if (p.type === 'seed') {
+                wrap.innerHTML = `<span>${p.l}</span>`;
+                const row = document.createElement('div');
+                row.className = 'row';
+                const inp = document.createElement('input');
+                inp.type = 'number'; inp.value = params[p.k]; inp.min = 0;
+                inp.addEventListener('input', () => { params[p.k] = parseInt(inp.value) || 0; requestRender(); });
+                const b = document.createElement('button');
+                b.className = 'secondary'; b.textContent = '🎲 Randomise'; b.style.flex = '0 0 auto';
+                b.onclick = () => { params[p.k] = randSeed(); inp.value = params[p.k]; requestRender(); };
+                row.append(inp, b);
+                wrap.appendChild(row);
+            }
+            root.appendChild(wrap);
+        });
+        if (!g.params.length) {
+            root.innerHTML = '<p class="help">Pick a pattern to fill the tile background. Shapes and images are drawn on top of it.</p>';
+        }
+    }
+    const setMathEdge = segmented('mathEdge', v => { state.math.edge = v; syncMathLook(); requestRender(); });
+    function syncMathLook() {
+        const m = state.math;
+        setMathEdge(m.edge);
+        $('mathLevel').value = m.level;
+        $('mathLevelVal').textContent = (+m.level).toFixed(2);
+        $('mathLevelField').classList.toggle('disabled', m.edge !== 'hard');
+        $('mathOpacity').value = Math.round(m.opacity * 100);
+        $('mathOpacityVal').textContent = Math.round(m.opacity * 100) + '%';
+        $('mathInvert').checked = m.invert;
+        $('mathLook').classList.toggle('hidden', m.type === 'none');
+    }
+    $('mathType').addEventListener('change', e => setMathType(e.target.value));
+    $('mathLevel').addEventListener('input', e => { state.math.level = +e.target.value; $('mathLevelVal').textContent = (+e.target.value).toFixed(2); requestRender(); });
+    $('mathOpacity').addEventListener('input', e => { state.math.opacity = e.target.value / 100; $('mathOpacityVal').textContent = e.target.value + '%'; requestRender(); });
+    $('mathInvert').addEventListener('change', e => { state.math.invert = e.target.checked; requestRender(); });
+
+    // =====================================================================
+    // Colour UI
+    // =====================================================================
+    PRESETS.forEach((p, i) => {
+        const o = document.createElement('option');
+        o.value = i; o.textContent = p[0];
+        $('gradPreset').appendChild(o);
+    });
+    const customOpt = document.createElement('option');
+    customOpt.value = 'custom'; customOpt.textContent = 'Custom';
+    $('gradPreset').appendChild(customOpt);
+
+    const setColorMode = segmented('colorMode', v => { state.color.mode = v; syncColorUI(); requestRender(); });
+    function syncColorUI() {
+        const c = state.color;
+        setColorMode(c.mode);
+        $('bwOptions').classList.toggle('hidden', c.mode !== 'bw');
+        $('gradOptions').classList.toggle('hidden', c.mode !== 'gradient');
+        $('bwInvert').checked = c.bwInvert;
+        $('bwThreshold').checked = c.bwThreshold;
+        $('gradA').value = c.stops[0]; $('gradB').value = c.stops[1]; $('gradC').value = c.stops[2];
+        $('gradUseMid').checked = c.useMid;
+        $('gradB').disabled = !c.useMid;
+        $('gradStyle').value = c.style;
+        $('toneOpts').classList.toggle('hidden', c.style !== 'tone');
+        $('sweepOpts').classList.toggle('hidden', c.style !== 'sweep');
+        $('sweepDir').value = c.sweepDir;
+        $('sweepPaper').value = c.paper;
+        $('sweepCycles').value = c.sweepCycles;
+        $('sweepCyclesVal').textContent = c.sweepCycles;
+        $('gradInvert').checked = c.gradInvert;
+        const stops = c.useMid ? c.stops : [c.stops[0], c.stops[2]];
+        const ordered = c.gradInvert ? [...stops].reverse() : stops;
+        $('gradBar').style.background = `linear-gradient(90deg, ${ordered.join(', ')})`;
+        const pi = PRESETS.findIndex(p => p[1] === c.stops[0] && p[2] === c.stops[1] && p[3] === c.stops[2]);
+        $('gradPreset').value = pi >= 0 ? pi : 'custom';
+    }
+    $('bwInvert').addEventListener('change', e => { state.color.bwInvert = e.target.checked; requestRender(); });
+    $('bwThreshold').addEventListener('change', e => { state.color.bwThreshold = e.target.checked; requestRender(); });
+    $('gradPreset').addEventListener('change', e => {
+        if (e.target.value === 'custom') return;
+        const p = PRESETS[+e.target.value];
+        state.color.stops = [p[1], p[2], p[3]];
+        syncColorUI(); requestRender();
+    });
+    ['gradA', 'gradB', 'gradC'].forEach((id, i) => $(id).addEventListener('input', e => {
+        state.color.stops[i] = e.target.value; syncColorUI(); requestRender();
+    }));
+    $('gradUseMid').addEventListener('change', e => { state.color.useMid = e.target.checked; syncColorUI(); requestRender(); });
+    $('gradStyle').addEventListener('change', e => { state.color.style = e.target.value; syncColorUI(); requestRender(); });
+    $('sweepDir').addEventListener('change', e => { state.color.sweepDir = e.target.value; requestRender(); });
+    $('sweepPaper').addEventListener('input', e => { state.color.paper = e.target.value; requestRender(); });
+    $('sweepCycles').addEventListener('input', e => { state.color.sweepCycles = +e.target.value; $('sweepCyclesVal').textContent = e.target.value; requestRender(); });
+    $('gradInvert').addEventListener('change', e => { state.color.gradInvert = e.target.checked; syncColorUI(); requestRender(); });
+
+    // =====================================================================
+    // View UI
+    // =====================================================================
+    const HINTS = {
+        single: 'The outlined centre is your live tile. The 8 tiles around it show how shapes wrap across the edges. Drag to move · Scroll on a shape to resize · Shift+scroll to rotate.',
+        tiled: 'Repeated tiles to check the pattern for seams. You can still drag shapes here. Scroll on empty space to change the number of tiles.'
+    };
+    const setViewMode = segmented('viewMode', v => {
+        state.view.mode = v;
+        $('dimOpt').classList.toggle('hidden', v !== 'single');
+        $('seamOpt').classList.toggle('hidden', v !== 'tiled');
+        $('tilesOpt').classList.toggle('hidden', v !== 'tiled');
+        $('canvasHint').textContent = HINTS[v];
+        requestView();
+    });
+    $('canvasHint').textContent = HINTS.single;
+    $('dimNeighbours').addEventListener('change', e => { state.view.dim = e.target.checked; requestView(); });
+    $('showSeams').addEventListener('change', e => { state.view.seams = e.target.checked; requestView(); });
+    function setTiles(n) {
+        state.view.tiles = Math.max(2, Math.min(16, n));
+        $('tileCount').value = state.view.tiles;
+        $('tileCountVal').textContent = state.view.tiles;
+        requestView();
+    }
+    $('tileCount').addEventListener('input', e => setTiles(+e.target.value));
+    $('undoBtn').onclick = undo;
+    $('redoBtn').onclick = redo;
+    $('previewSize').addEventListener('change', e => { state.previewSize = +e.target.value; requestRender(); });
+
+    new ResizeObserver(resizeView).observe(viewCanvas);
+    window.addEventListener('resize', resizeView);
+
+    // =====================================================================
+    // Export
+    // =====================================================================
+    function downloadCanvas(canvas, filename) {
+        canvas.toBlob(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }, 'image/png');
+    }
+    function withBusy(btn, fn) {
+        const label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Rendering…';
+        setTimeout(() => {
+            try { fn(); } finally { btn.disabled = false; btn.textContent = label; }
+        }, 30);
+    }
+    $('downloadTileBtn').onclick = e => withBusy(e.target, () => {
+        const S = +$('exportSize').value;
+        const c = renderTile(document.createElement('canvas'), S);
+        downloadCanvas(c, `seamless-pattern-${S}.png`);
+    });
+    $('downloadSheetBtn').onclick = e => withBusy(e.target, () => {
+        const n = +$('sheetRepeats').value;
+        const S = Math.min(+$('exportSize').value, Math.floor(8192 / n));
+        const tile = renderTile(document.createElement('canvas'), S);
+        const sheet = document.createElement('canvas');
+        sheet.width = sheet.height = S * n;
+        const ctx = sheet.getContext('2d');
+        for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) ctx.drawImage(tile, i * S, j * S);
+        downloadCanvas(sheet, `seamless-pattern-sheet-${n}x${n}.png`);
+    });
+
+    $('saveProjectBtn').onclick = () => {
+        const data = {
+            app: 'jtools-seamless-pattern', version: 1,
+            elements: state.elements,
+            images: Object.fromEntries(Object.entries(state.images).map(([id, im]) => [id, { name: im.name, src: im.src }])),
+            math: state.math,
+            color: state.color
+        };
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'seamless-pattern.json';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    };
+    $('loadProjectBtn').onclick = () => $('projectInput').click();
+    $('projectInput').addEventListener('change', async e => {
+        const f = e.target.files[0];
+        e.target.value = '';
+        if (!f) return;
+        try {
+            const data = JSON.parse(await f.text());
+            if (data.app !== 'jtools-seamless-pattern') throw new Error('Not a pattern project file');
+            state.images = {};
+            for (const [id, im] of Object.entries(data.images || {})) await addImage(im.name, im.src, id);
+            const nums = Object.keys(state.images).map(id => parseInt(id.replace(/\D/g, '')) || 0);
+            state.nextImageId = Math.max(0, ...nums) + 1;
+            pushHistory();
+            state.elements = data.elements || [];
+            state.nextId = Math.max(0, ...state.elements.map(el => el.id)) + 1;
+            state.math = Object.assign({ type: 'none', params: {}, edge: 'hard', level: 0.5, opacity: 1, invert: false }, data.math);
+            if (!GENS[state.math.type]) state.math.type = 'none';
+            state.color = Object.assign(state.color, data.color);
+            state.selectedId = null;
+            setMathType(state.math.type, true);
+            syncColorUI();
+            refreshImagePalette();
+            refreshScatterSource();
+            refreshSelectionPanel();
+            requestRender();
+        } catch (err) {
+            alert('Could not load project: ' + err.message);
+        }
+    });
+
+    // =====================================================================
+    // Init – a small starter pattern so the page isn't empty
+    // =====================================================================
+    refreshScatterSource();
+    refreshImagePalette();
+    setMathType('none');
+    syncColorUI();
+    updateHistoryButtons();
+    state.elements.push(
+        makeElement('circle', { x: 0.08, y: 0.1, size: 0.3 }),
+        makeElement('star', { x: 0.55, y: 0.45, size: 0.32, rotation: 12 }),
+        makeElement('ring', { x: 0.92, y: 0.75, size: 0.22 }),
+        makeElement('triangle', { x: 0.3, y: 0.82, size: 0.18, rotation: 20, style: 'stroke', stroke: 0.18 })
+    );
+    resizeView();
+    requestRender();
+})();
+</script>
+</body>
+</html>
